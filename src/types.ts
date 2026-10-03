@@ -1,11 +1,15 @@
 import type { ArrowType, MarkerType } from "cm-chessboard/src/Chessboard.js";
 
 export interface ChessSettings {
+	// A board colour theme from board-themes.ts.
 	boardTheme: string;
 	showCoordinates: boolean;
 	animationDuration: number;
 	autoPlaySpeed: number;
 	fanPieceSet: string;
+	moveSounds: boolean;
+	soundVolume: number;
+	announceMoves: boolean;
 	// Also render chess, pgn and fen code blocks. Off by default; read once at load.
 	chessBlocks: boolean;
 	pgnBlocks: boolean;
@@ -15,11 +19,14 @@ export interface ChessSettings {
 }
 
 export const DEFAULT_SETTINGS: ChessSettings = {
-	boardTheme: "sfb-chess",
+	boardTheme: "green",
 	showCoordinates: true,
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
 	fanPieceSet: "standard",
+	moveSounds: false,
+	soundVolume: 50,
+	announceMoves: false,
 	chessBlocks: false,
 	pgnBlocks: false,
 	fenBlocks: false,
@@ -40,10 +47,17 @@ export interface CodeBlockOptions {
 	mode: ChessMode;
 	startAt: StartAt;
 	flipped: boolean;
+	// interactive:false or diagram:true: one position, no controls or move list.
+	diagram: boolean;
 	// The side you play in drill mode; null: White, or Black when flipped.
 	color: "w" | "b" | null;
 	notation: Notation;
 	pieces: string | null;
+	// Drawings for a FEN diagram, as written: arrows:"e2e4,Rd8d1" squares:"d5,Rf7".
+	arrows: string | null;
+	squares: string | null;
+	// A board colour theme; null: the one in the settings.
+	board: string | null;
 	// Board width in pixels from size:; null: the settings default.
 	size: number | null;
 	title: string | null;
@@ -56,6 +70,8 @@ export interface CodeBlockOptions {
 	eco: string | null;
 	result: string | null;
 	src: string | null;
+	// The game to open in a PGN with several: 1-based number or "White vs Black".
+	game: number | string | null;
 }
 
 export const HINT_FROM_LIGHT: MarkerType = {

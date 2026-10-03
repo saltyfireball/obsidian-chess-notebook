@@ -9,6 +9,8 @@ import type { ArrowType } from "cm-chessboard/src/Chessboard.js";
 import { Markers } from "cm-chessboard/src/extensions/markers/Markers.js";
 import { Arrows } from "cm-chessboard/src/extensions/arrows/Arrows.js";
 import { Svg } from "cm-chessboard/src/lib/Svg.js";
+import { Extension, EXTENSION_POINT } from "cm-chessboard/src/model/Extension.js";
+import { squareLabel } from "./speech";
 import { PIECES_SVG, MARKERS_SVG, ARROWS_SVG, DEFS_SVG } from "./sprites";
 import { checkedKingSquare } from "./check";
 import { arrowMarkerId } from "./arrow-id";
@@ -30,6 +32,7 @@ import {
 import type { LegalTarget } from "./legal-moves";
 import type { ChessSettings } from "./types";
 import type { BoardShapes } from "./pgn-parser";
+import { boardThemeClass, resolveBoardTheme } from "./board-themes";
 
 interface MoveInputEvent {
 	type: string;
@@ -102,6 +105,32 @@ class BoardArrows extends Arrows {
 	}
 }
 
+// The stock board is one role="img" SVG, so screen readers see nothing on it.
+// This makes it a group and labels each square with what stands on it, e.g.
+// "e4, white knight", after every redraw and position change.
+class SquareLabels extends Extension {
+	constructor(chessboard: unknown) {
+		super(chessboard);
+		this.registerExtensionPoint(EXTENSION_POINT.afterRedrawBoard, () => this.label());
+		this.registerExtensionPoint(EXTENSION_POINT.positionChanged, () => this.label());
+	}
+
+	private label(): void {
+		const svg = this.chessboard.view.svg;
+		if (!svg) return;
+		svg.setAttribute("role", "group");
+		svg.setAttribute("aria-label", "Chessboard");
+		for (const layer of Array.from(svg.querySelectorAll(".pieces-layer, .markers-layer, .markers-top-layer"))) {
+			layer.setAttribute("aria-hidden", "true");
+		}
+		for (const rect of Array.from(svg.querySelectorAll("rect[data-square]"))) {
+			const square = rect.getAttribute("data-square") ?? "";
+			rect.setAttribute("role", "img");
+			rect.setAttribute("aria-label", squareLabel(square, this.chessboard.getPiece(square)));
+		}
+	}
+}
+
 export class BoardManager {
 	private board: Chessboard;
 	private container: HTMLElement;
@@ -116,8 +145,10 @@ export class BoardManager {
 		fen: string,
 		settings: ChessSettings,
 		pieceSetName?: string,
+		boardTheme?: string | null,
 	) {
 		this.container = container;
+		container.addClass(boardThemeClass(resolveBoardTheme(boardTheme ?? null, settings.boardTheme)));
 		// The standard set is the sprite the board already draws.
 		this.pieceSetName = pieceSetName && getPieceSet(pieceSetName) ? pieceSetName : null;
 		injectSprites(container.doc);
@@ -129,7 +160,7 @@ export class BoardManager {
 			assetsCache: true,
 			assetsUrl: "",
 			style: {
-				cssClass: settings.boardTheme,
+				cssClass: "sfb-chess",
 				showCoordinates: settings.showCoordinates,
 				borderType: BORDER_TYPE.none,
 				aspectRatio: 1,
@@ -142,6 +173,10 @@ export class BoardManager {
 				},
 				{
 					class: BoardArrows,
+					props: {},
+				},
+				{
+					class: SquareLabels,
 					props: {},
 				},
 			],
@@ -223,10 +258,10 @@ export class BoardManager {
 		this.board.removeMarkers(LAST_MOVE_DARK);
 	}
 
-	flip(): void {
+	flip(animated: boolean = true): void {
 		const current = this.board.getOrientation();
 		const next = current === COLOR.white ? COLOR.black : COLOR.white;
-		void this.board.setOrientation(next, true).then(() => this.replacePieces());
+		void this.board.setOrientation(next, animated).then(() => this.replacePieces());
 	}
 
 	getOrientation(): string {
