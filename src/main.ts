@@ -111,7 +111,7 @@ export default class ChessPlugin extends Plugin {
 	private addPasteCommand(): void {
 		this.addCommand({
 			id: "paste-as-board",
-			name: "Paste FEN or PGN from clipboard as a board",
+			name: "Paste a chess position or game as a board",
 			editorCallback: async (editor: Editor) => {
 				const cursor = editor.getCursor("from");
 				if (insideCodeBlock(editor.getValue().split("\n"), cursor.line)) {
