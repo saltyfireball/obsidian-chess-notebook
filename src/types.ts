@@ -100,6 +100,12 @@ export const LAST_MOVE_DARK: MarkerType = {
 	slice: "markerSquare",
 };
 
+// The square of a king in check.
+export const CHECK_MARKER: MarkerType = {
+	class: "marker-check",
+	slice: "markerSquare",
+};
+
 // Drawings from [%cal] and [%csl] in PGN comments, one type per colour letter.
 export const SHAPE_ARROWS: Record<string, ArrowType> = {
 	G: { class: "arrow-pgn-green" },
