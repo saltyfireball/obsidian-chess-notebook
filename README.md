@@ -76,6 +76,10 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 ```
 ````
 
+### Trying your own moves
+
+On a game or a single FEN position, drag any legal move to try a line of your own from the position on the board. An "Exploring: 12...Nf6 13.d4" bar appears under the board, the game's moves wait until you are done, and Back to game (or Escape) puts the game back where you left it. The Left arrow takes back your last move. Nothing is written to the note. This works in normal mode; puzzle, step and drill mode keep the board to themselves.
+
 ### Puzzle mode
 
 Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.

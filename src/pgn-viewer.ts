@@ -7,6 +7,7 @@ import { flattenMoves, type FlatMove } from "./flat-moves";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
+import { BoardExplorer } from "./board-explorer";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
@@ -63,6 +64,8 @@ export class PgnViewer {
 	private drillStatus: HTMLElement | null = null;
 	private drillBranches: string[] = [];
 	private drillRuns = new DrillRuns();
+	// The reader's own line from the current position, in normal mode.
+	private explorer: BoardExplorer | null = null;
 	private notation: Notation = "san";
 	private pieceSetName: string = STANDARD_PIECE_SET;
 	private pieceSetReady = false;
@@ -154,12 +157,15 @@ export class PgnViewer {
 		this.applyStartAt(options.startAt);
 		this.updateActiveComment();
 
+		this.createExplorer(boardColumn);
 		if (this.initialMode === "drill") {
 			this.activateDrillMode();
 		} else if (this.initialMode === "puzzle") {
 			this.togglePuzzleMode();
 		} else if (this.initialMode === "step") {
 			this.toggleStepMode();
+		} else {
+			this.enableExplore();
 		}
 
 		this.registerKeyboardShortcuts();
@@ -167,6 +173,13 @@ export class PgnViewer {
 
 	private registerKeyboardShortcuts(): void {
 		this.keyboardHandler = (e: KeyboardEvent) => {
+			// While exploring, Escape goes back to the game and Left takes back a move.
+			if (this.exploring() && (e.key === "Escape" || e.key === "ArrowLeft")) {
+				e.preventDefault();
+				if (e.key === "Escape") this.explorer?.back();
+				else this.explorer?.undo();
+				return;
+			}
 			switch (e.key) {
 				case "ArrowLeft":
 					e.preventDefault();
@@ -464,6 +477,7 @@ export class PgnViewer {
 	}
 
 	private handleMoveClick(id: string): void {
+		if (this.exploring()) return;
 		if (this.puzzleMode || this.stepMode) {
 			const idx = this.getMainlineIndex(id);
 			if (idx !== null) {
@@ -512,8 +526,10 @@ export class PgnViewer {
 			copyWithFeedback(copyPgn, this.rawPgn, "PGN", this.copyHooks()));
 	}
 
-	// The position on the board: the start, or the move the viewer is on.
+	// The position on the board: an explored line's, the start, or the move the viewer is on.
 	private currentFen(): string {
+		const explored = this.explorer?.fen;
+		if (explored) return explored;
 		const flat = this.allFlatMoves.find((fm) => fm.id === this.currentMoveId);
 		return flat ? flat.node.fen : this.startingFen;
 	}
@@ -570,7 +586,7 @@ export class PgnViewer {
 	// --- Auto-play ---
 
 	private toggleAutoPlay(): void {
-		if (this.puzzleMode || this.stepMode || this.drillMode) return;
+		if (this.puzzleMode || this.stepMode || this.drillMode || this.exploring()) return;
 		if (this.autoPlaying) {
 			this.stopAutoPlay();
 		} else {
@@ -662,6 +678,7 @@ export class PgnViewer {
 	}
 
 	private activatePuzzleMode(): void {
+		this.leaveExplore();
 		this.puzzleMode = true;
 		this.puzzleComplete = false;
 		this.clearHint();
@@ -686,9 +703,11 @@ export class PgnViewer {
 		this.hintBtn?.addClass("sfb-chess-btn-hidden");
 		this.boardManager.disablePuzzleInput();
 		this.revealAllMoves();
+		this.enableExplore();
 	}
 
 	private activateStepMode(): void {
+		this.leaveExplore();
 		this.stepMode = true;
 		this.stepBtn?.addClass("sfb-chess-toggle-active");
 		this.puzzleBtn?.addClass("sfb-chess-btn-hidden");
@@ -700,6 +719,7 @@ export class PgnViewer {
 		this.stepBtn?.removeClass("sfb-chess-toggle-active");
 		this.puzzleBtn?.removeClass("sfb-chess-btn-hidden");
 		this.revealAllMoves();
+		this.enableExplore();
 	}
 
 	private resetPuzzle(): void {
@@ -1053,6 +1073,44 @@ export class PgnViewer {
 		return this.drillMode && !this.drillComplete;
 	}
 
+	// Game navigation waits while a drill runs or the reader explores a line.
+	private navLocked(): boolean {
+		return this.drillRunning() || this.exploring();
+	}
+
+	// --- Explore ---
+
+	private exploring(): boolean {
+		return this.explorer?.active ?? false;
+	}
+
+	// Dragging a piece in normal mode starts a line of the reader's own.
+	private createExplorer(boardColumn: HTMLElement): void {
+		this.explorer = new BoardExplorer(this.boardManager, boardColumn, {
+			baseFen: () => this.getCurrentFen(),
+			onEnter: () => {
+				this.stopAutoPlay();
+				this.movesContainer.addClass("sfb-chess-moves-paused");
+			},
+			onPosition: (fen) => this.updateDrawBadge(fen, 1),
+			onExit: () => {
+				this.movesContainer.removeClass("sfb-chess-moves-paused");
+				this.resetBoardPosition();
+			},
+		});
+	}
+
+	// Explore input is on only while no mode owns the board.
+	private enableExplore(): void {
+		if (this.puzzleMode || this.stepMode || this.drillMode) return;
+		this.explorer?.enable();
+	}
+
+	private leaveExplore(): void {
+		this.explorer?.back();
+		this.explorer?.disable();
+	}
+
 	private moveToFind(): MoveNode | null {
 		if (this.drillMode) {
 			if (this.drillComplete) return null;
@@ -1235,7 +1293,7 @@ export class PgnViewer {
 	}
 
 	private goToStart(): void {
-		if (this.drillRunning()) return;
+		if (this.navLocked()) return;
 		this.currentMoveId = null;
 		this.showBoardAt(null);
 		this.updateActiveMove();
@@ -1247,7 +1305,7 @@ export class PgnViewer {
 	}
 
 	private goToEnd(): void {
-		if (this.drillRunning()) return;
+		if (this.navLocked()) return;
 		if (this.mainlineMoves.length === 0) return;
 		if (this.puzzleMode || this.stepMode) {
 			const maxIdx = this.getMaxRevealedIndex();
@@ -1268,7 +1326,7 @@ export class PgnViewer {
 	}
 
 	private nextMove(): void {
-		if (this.drillRunning()) return;
+		if (this.navLocked()) return;
 		if (this.currentMoveId === null) {
 			if (this.mainlineMoves.length > 0) {
 				const maxIdx = this.getMaxRevealedIndex();
@@ -1304,7 +1362,7 @@ export class PgnViewer {
 	}
 
 	private prevMove(): void {
-		if (this.drillRunning()) return;
+		if (this.navLocked()) return;
 		if (this.currentMoveId === null) return;
 
 		const match = /^m-(\d+)$/.exec(this.currentMoveId);
