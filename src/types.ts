@@ -6,6 +6,8 @@ export interface ChessSettings {
 	animationDuration: number;
 	autoPlaySpeed: number;
 	fanPieceSet: string;
+	// small, medium or large; a block's size: option overrides it.
+	boardSize: string;
 }
 
 export const DEFAULT_SETTINGS: ChessSettings = {
@@ -14,6 +16,7 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
 	fanPieceSet: "standard",
+	boardSize: "medium",
 };
 
 export type ChessMode = "normal" | "puzzle" | "step" | "drill";
@@ -34,6 +37,8 @@ export interface CodeBlockOptions {
 	color: "w" | "b" | null;
 	notation: Notation;
 	pieces: string | null;
+	// Board width in pixels from size:; null: the settings default.
+	size: number | null;
 	title: string | null;
 	white: string | null;
 	black: string | null;
@@ -54,6 +59,20 @@ export const HINT_FROM_LIGHT: MarkerType = {
 export const HINT_FROM_DARK: MarkerType = {
 	class: "marker-hint-from-dark",
 	slice: "markerSquare",
+};
+
+// Where the picked-up piece can go in puzzle and drill mode: a dot on an
+// empty square, a ring around a piece it can take.
+export const LEGAL_MOVE_DOT: MarkerType = {
+	class: "marker-legal-dot",
+	slice: "markerDot",
+	position: "above",
+};
+
+export const LEGAL_MOVE_CAPTURE: MarkerType = {
+	class: "marker-legal-capture",
+	slice: "markerCircle",
+	position: "above",
 };
 
 // The last hint step: the move to find, as an arrow.

@@ -22,9 +22,12 @@ import {
 	WRONG_ARROW,
 	SHAPE_ARROWS,
 	SHAPE_SQUARES,
+	LEGAL_MOVE_DOT,
+	LEGAL_MOVE_CAPTURE,
 	CHECK_MARKER,
 	isLightSquare,
 } from "./types";
+import type { LegalTarget } from "./legal-moves";
 import type { ChessSettings } from "./types";
 import type { BoardShapes } from "./pgn-parser";
 
@@ -105,6 +108,7 @@ export class BoardManager {
 	private pieceSetName: string | null = null;
 	private timers = new Set<number>();
 	private shapesShown = false;
+	private legalMovesShown = false;
 	private checkSquare: string | null = null;
 
 	constructor(
@@ -233,16 +237,23 @@ export class BoardManager {
 		canPickUp: (square: string) => boolean,
 		isLegal: (from: string, to: string) => boolean,
 		onMoveFinished: (from: string, to: string) => void,
+		legalTargets: (square: string) => LegalTarget[],
 	): void {
 		try { this.board.disableMoveInput(); } catch { /* not enabled */ }
 		this.board.enableMoveInput((event: MoveInputEvent) => {
 			if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
-				return canPickUp(event.squareFrom);
+				const ok = canPickUp(event.squareFrom);
+				if (ok) this.showLegalMoves(legalTargets(event.squareFrom));
+				return ok;
 			}
 			if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
 				return isLegal(event.squareFrom, event.squareTo);
 			}
+			if (event.type === INPUT_EVENT_TYPE.moveInputCanceled) {
+				this.clearLegalMoves();
+			}
 			if (event.type === INPUT_EVENT_TYPE.moveInputFinished) {
+				this.clearLegalMoves();
 				onMoveFinished(event.squareFrom, event.squareTo);
 			}
 			return undefined;
@@ -251,6 +262,23 @@ export class BoardManager {
 
 	disablePuzzleInput(): void {
 		try { this.board.disableMoveInput(); } catch { /* ignore */ }
+		this.clearLegalMoves();
+	}
+
+	private showLegalMoves(targets: LegalTarget[]): void {
+		this.clearLegalMoves();
+		for (const t of targets) {
+			this.board.addMarker(t.capture ? LEGAL_MOVE_CAPTURE : LEGAL_MOVE_DOT, t.square);
+		}
+		this.legalMovesShown = targets.length > 0;
+	}
+
+	// Each remove redraws the markers, so skip it when no dots are up.
+	private clearLegalMoves(): void {
+		if (!this.legalMovesShown) return;
+		this.board.removeMarkers(LEGAL_MOVE_DOT);
+		this.board.removeMarkers(LEGAL_MOVE_CAPTURE);
+		this.legalMovesShown = false;
 	}
 
 	flashWrong(): void {

@@ -168,7 +168,7 @@
 
 /* FEN viewer: just the board */
 .sfb-chess-fen {
-    max-width: 420px;
+    max-width: var(--sfb-board-size, 420px);
 }
 
 .sfb-chess-fen .sfb-chess-board-wrapper {
@@ -178,7 +178,7 @@
 
 /* PGN viewer: board + sidebar layout */
 .sfb-chess-pgn {
-    max-width: 780px;
+    max-width: calc(var(--sfb-board-size, 420px) + 360px);
 }
 
 .sfb-chess-header {
@@ -224,7 +224,7 @@
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    width: 420px;
+    width: min(var(--sfb-board-size, 420px), 100%);
 }
 
 .sfb-chess-pgn .sfb-chess-board-wrapper {
@@ -237,7 +237,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    max-height: 462px;
+    max-height: calc(var(--sfb-board-size, 420px) + 42px);
     background: var(--background-primary);
     border-left: 1px solid var(--background-modifier-border);
 }
@@ -553,6 +553,18 @@
 .cm-chessboard .markers .marker.marker-pgn-red { fill: rgb(200, 40, 40); opacity: 0.5; }
 .cm-chessboard .markers .marker.marker-pgn-yellow { fill: rgb(230, 143, 0); opacity: 0.5; }
 .cm-chessboard .markers .marker.marker-pgn-blue { fill: rgb(0, 80, 200); opacity: 0.5; }
+
+/* Where the picked-up piece can go (puzzle and drill mode) */
+.cm-chessboard .markers .marker.marker-legal-dot {
+    fill: black;
+    opacity: 0.25;
+}
+
+.cm-chessboard .markers .marker.marker-legal-capture {
+    stroke: black;
+    stroke-width: 3px;
+    opacity: 0.25;
+}
 
 /* A king in check: a red glow on its square (gradient in DEFS_SVG). */
 .cm-chessboard .markers .marker.marker-check {
