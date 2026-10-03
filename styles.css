@@ -23,22 +23,63 @@
 }
 
 /* ============================================================
-   Custom board theme: sfb-chess (Lichess-style green)
-   Light: #EBECD3  Dark: #7A945A
+   Board colour themes: board:green|brown|blue|wood|grey, set as
+   sfb-board-<name> on the board's container. Each theme sets the
+   square, coordinate and last-move colours the board rules read.
    ============================================================ */
 
+.sfb-board-green {
+    --sfb-square-light: #ebecd3;
+    --sfb-square-dark: #7a945a;
+    --sfb-coord-dark: #6b8550;
+    --sfb-lastmove-light: #c4c574;
+    --sfb-lastmove-dark: #a7b250;
+}
+
+.sfb-board-brown {
+    --sfb-square-light: #f0d9b5;
+    --sfb-square-dark: #b58863;
+    --sfb-coord-dark: #946f51;
+    --sfb-lastmove-light: #cdd26a;
+    --sfb-lastmove-dark: #aaa23a;
+}
+
+.sfb-board-blue {
+    --sfb-square-light: #dee3e6;
+    --sfb-square-dark: #8ca2ad;
+    --sfb-coord-dark: #6f8794;
+    --sfb-lastmove-light: #c3d887;
+    --sfb-lastmove-dark: #92b166;
+}
+
+.sfb-board-wood {
+    --sfb-square-light: #deb47c;
+    --sfb-square-dark: #8b5a2b;
+    --sfb-coord-dark: #74491f;
+    --sfb-lastmove-light: #d6c766;
+    --sfb-lastmove-dark: #a8963a;
+}
+
+.sfb-board-grey {
+    --sfb-square-light: #e6e6e6;
+    --sfb-square-dark: #a6a6a6;
+    --sfb-coord-dark: #858585;
+    --sfb-lastmove-light: #d6d68c;
+    --sfb-lastmove-dark: #b2b264;
+}
+
 .cm-chessboard.sfb-chess .board .square.white {
-    fill: #ebecd3;
+    fill: var(--sfb-square-light, #ebecd3);
 }
 
 .cm-chessboard.sfb-chess .board .square.black {
-    fill: #7a945a;
+    fill: var(--sfb-square-dark, #7a945a);
 }
 
 .cm-chessboard.sfb-chess.border-type-none .board .border {
-    stroke: #7a945a;
+    stroke: var(--sfb-square-dark, #7a945a);
     stroke-width: 0;
-    fill: #7a945a;
+    fill: var(--sfb-square-dark, #7a945a);
 }
 
 .cm-chessboard.sfb-chess .coordinates {
@@ -47,18 +88,18 @@
 }
 
 .cm-chessboard.sfb-chess .coordinates .coordinate {
-    fill: #6b8550;
+    fill: var(--sfb-coord-dark, #6b8550);
     font-size: 7px;
     cursor: default;
     font-weight: bold;
 }
 
 .cm-chessboard.sfb-chess .coordinates .coordinate.black {
-    fill: #ebecd3;
+    fill: var(--sfb-square-light, #ebecd3);
 }
 
 .cm-chessboard.sfb-chess .coordinates .coordinate.white {
-    fill: #6b8550;
+    fill: var(--sfb-coord-dark, #6b8550);
 }
 
 /* ============================================================
@@ -87,12 +128,12 @@
 
 /* Last move highlight markers */
 .cm-chessboard .markers .marker.marker-lastmove-light {
-    fill: #c4c574;
+    fill: var(--sfb-lastmove-light, #c4c574);
     opacity: 1;
 }
 
 .cm-chessboard .markers .marker.marker-lastmove-dark {
-    fill: #a7b250;
+    fill: var(--sfb-lastmove-dark, #a7b250);
     opacity: 1;
 }
 
@@ -209,6 +250,35 @@
 .sfb-chess-fen .sfb-chess-board-wrapper {
     width: 100%;
     aspect-ratio: 1;
+}
+
+/* Static diagram (interactive:false): a plain board with an optional caption */
+.sfb-chess-static {
+    background: none;
+}
+
+.sfb-chess-static-caption {
+    padding: 6px 8px;
+    text-align: center;
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+@media print {
+    .sfb-chess-static {
+        break-inside: avoid;
+        border-color: #999;
+    }
+
+    /* Printers drop background colours by default; keep the squares. */
+    .sfb-chess-static .cm-chessboard {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .sfb-chess-static-caption {
+        color: #000;
+    }
 }
 
 /* PGN viewer: board + sidebar layout */
@@ -644,6 +714,37 @@
     visibility: hidden;
 }
 
+/* While the reader explores a line of their own, the game's moves wait. */
+.sfb-chess-moves.sfb-chess-moves-paused {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.sfb-chess-explore-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    background: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-explore-label {
+    color: var(--text-muted);
+}
+
+.sfb-chess-explore-line {
+    flex: 1 1 auto;
+    font-family: var(--font-monospace);
+}
+
+.sfb-chess-explore-back {
+    font-size: var(--font-ui-small);
+}
+
 /* The comment on the move to find, shown by the first Hint press, and the
    line a drill run follows. */
 .sfb-chess-hint-comment,
@@ -942,6 +1043,46 @@
     background: var(--background-secondary);
     border-radius: 6px;
     border: 1px solid var(--background-modifier-border);
+}
+
+/* =====================================================
+   Review puzzles from the vault (modal)
+   ============================================================ */
+
+.modal.sfb-chess-review-modal {
+    width: min(760px, 95vw);
+}
+
+.sfb-chess-review-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: var(--font-ui-small);
+}
+
+.sfb-chess-review-count {
+    font-weight: 600;
+}
+
+.sfb-chess-review-source {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sfb-chess-review-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.sfb-chess-review-done {
+    padding: 24px 0;
+    text-align: center;
 }
 
 /* Eval bar beside the board, from [%eval] in the PGN */

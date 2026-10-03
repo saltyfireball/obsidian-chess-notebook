@@ -46,3 +46,23 @@ export function squareLabel(square: string, piece: string | null): string {
 	const name = PIECE_NAMES[piece[1].toUpperCase()] ?? piece;
 	return `${square}, ${color} ${name}`;
 }
+
+// The ARIA attributes the Square labels setting puts on the board, its
+// hidden layers and each square. Off, each one is null or the stock value, so
+// a board labelled before the setting was turned off goes back to how the
+// library drew it.
+export type AriaAttrs = Record<string, string | null>;
+
+export function boardAria(enabled: boolean): AriaAttrs {
+	return enabled ? { role: "group", "aria-label": "Chessboard" } : { role: "img", "aria-label": null };
+}
+
+export function layerAria(enabled: boolean): AriaAttrs {
+	return { "aria-hidden": enabled ? "true" : null };
+}
+
+export function squareAria(enabled: boolean, square: string, piece: string | null): AriaAttrs {
+	return enabled
+		? { role: "img", "aria-label": squareLabel(square, piece) }
+		: { role: null, "aria-label": null };
+}
