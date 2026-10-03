@@ -10,6 +10,8 @@ import { HintProgress } from "./hints";
 import { legalTargets } from "./legal-moves";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
+import { moveSpeech, START_SPEECH } from "./speech";
+import { playMoveSound, soundFor } from "./sound";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
 const ICON_PUZZLE = "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3.8h1.5c1.38 0 2.5 1.12 2.5 2.5S4.88 15.8 3.5 15.8H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z";
@@ -79,8 +81,15 @@ export class PgnViewer {
 	private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
 	private rawPgn: string;
 
+	// Read live, so a settings change applies to boards already open.
+	private settings: ChessSettings;
+	private liveRegion: HTMLElement | null = null;
+	// Off while the board sets itself up, so opening a note is silent.
+	private feedbackReady = false;
+
 	constructor(container: HTMLElement, pgn: string, options: CodeBlockOptions, settings: ChessSettings) {
 		this.rawPgn = pgn;
+		this.settings = settings;
 		const parsed = parsePgn(pgn);
 
 		if (parsed.moves.length === 0) {
@@ -147,6 +156,10 @@ export class PgnViewer {
 		}
 		this.boardColumn = boardColumn;
 		this.buildControls(boardColumn);
+		this.liveRegion = boardColumn.createDiv({
+			cls: "sfb-chess-live",
+			attr: { role: "status", "aria-live": "polite", "aria-atomic": "true" },
+		});
 
 		const sidebar = content.createDiv({ cls: "sfb-chess-sidebar" });
 		this.movesContainer = sidebar.createDiv({ cls: "sfb-chess-moves" });
@@ -165,6 +178,19 @@ export class PgnViewer {
 		}
 
 		this.registerKeyboardShortcuts();
+		this.feedbackReady = true;
+	}
+
+	// The move just reached, read out and played when the settings ask for it;
+	// null is the start position.
+	private moveFeedback(node: MoveNode | null): void {
+		if (!this.feedbackReady) return;
+		if (this.settings.announceMoves && this.liveRegion) {
+			this.liveRegion.setText(node ? moveSpeech(node.san, node.color, node.moveNumber) : START_SPEECH);
+		}
+		if (node && this.settings.moveSounds) {
+			playMoveSound(soundFor(node.san), this.settings.soundVolume);
+		}
 	}
 
 	private registerKeyboardShortcuts(): void {
@@ -1226,6 +1252,7 @@ export class PgnViewer {
 
 		this.currentMoveId = id;
 		this.showBoardAt(flat);
+		this.moveFeedback(flat.node);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.scrollToActiveMove();
@@ -1252,6 +1279,7 @@ export class PgnViewer {
 		if (this.drillRunning()) return;
 		this.currentMoveId = null;
 		this.showBoardAt(null);
+		this.moveFeedback(null);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.dropStaleHint();

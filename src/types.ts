@@ -6,6 +6,9 @@ export interface ChessSettings {
 	animationDuration: number;
 	autoPlaySpeed: number;
 	fanPieceSet: string;
+	moveSounds: boolean;
+	soundVolume: number;
+	announceMoves: boolean;
 	// Also render chess, pgn and fen code blocks. Read once at load.
 	chessBlocks: boolean;
 	pgnBlocks: boolean;
@@ -20,6 +23,9 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
 	fanPieceSet: "standard",
+	moveSounds: false,
+	soundVolume: 50,
+	announceMoves: false,
 	chessBlocks: true,
 	pgnBlocks: true,
 	fenBlocks: true,
