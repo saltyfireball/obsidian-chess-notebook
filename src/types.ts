@@ -51,15 +51,8 @@ export const HINT_FROM_DARK: MarkerType = {
 	slice: "markerSquare",
 };
 
-export const HINT_TO_LIGHT: MarkerType = {
-	class: "marker-hint-to-light",
-	slice: "markerSquare",
-};
-
-export const HINT_TO_DARK: MarkerType = {
-	class: "marker-hint-to-dark",
-	slice: "markerSquare",
-};
+// The last hint step: the move to find, as an arrow.
+export const HINT_ARROW: ArrowType = { class: "arrow-hint" };
 
 export interface ParsedCodeBlock {
 	type: "fen" | "pgn";
