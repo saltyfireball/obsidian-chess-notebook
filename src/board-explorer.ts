@@ -44,6 +44,8 @@ export class BoardExplorer {
 			(square) => this.current().hasOwnPiece(square),
 			(from, to) => this.current().isLegal(from, to),
 			(from, to) => this.play(from, to),
+			// Free exploring shows no legal-move dots.
+			() => [],
 		);
 	}
 
