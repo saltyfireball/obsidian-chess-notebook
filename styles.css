@@ -679,7 +679,6 @@
    NAG annotation glyphs
    ============================================================ */
 
-/* Base: shared by all NAG types */
 /* A move whose comment holds only board drawings. */
 .sfb-chess-drawing-dot {
     width: 6px;
@@ -694,6 +693,7 @@
     background: var(--text-on-accent);
 }
 
+/* Base: shared by all NAG types */
 .sfb-chess-nag {
     display: inline-flex;
     align-items: center;
