@@ -137,8 +137,10 @@ export function replacePiecesInContainer(container: HTMLElement, setName: string
 		// Parse fresh each time - no cached Documents
 		const parsed = new DOMParser().parseFromString(svgStr, "image/svg+xml");
 		const srcSvg = parsed.documentElement;
-		const vb = srcSvg.getAttribute("viewBox") ?? "0 0 45 45";
-		const parts = vb.split(/\s+/).map(Number);
+		// Some sets (kiwen-suwi) give only width and height, no viewBox.
+		const vb = srcSvg.getAttribute("viewBox")
+			?? `0 0 ${parseFloat(srcSvg.getAttribute("width") ?? "") || 45} ${parseFloat(srcSvg.getAttribute("height") ?? "") || 45}`;
+		const parts = vb.split(/[\s,]+/).map(Number);
 		const srcSize = Math.max(parts[2] ?? 45, parts[3] ?? 45);
 		const pieceScale = 40 / srcSize;
 
