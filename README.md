@@ -78,7 +78,7 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 ### Puzzle mode
 
-Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Hint highlights the piece to move, then the square it goes to. With `flipped:true` the board is shown from Black's side and you play Black's moves.
+Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
 
 ![Solving the finish of the Opera Game with the help of a hint](docs/media/puzzle.gif)
 

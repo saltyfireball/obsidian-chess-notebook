@@ -5,6 +5,7 @@ import { getNagInfo } from "./nag-data";
 import { drawReason, positionKey } from "./draw";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
+import { hintSteps } from "./hints";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
@@ -42,11 +43,13 @@ export class PgnViewer {
 	private puzzleMode = false;
 	private puzzleComplete = false;
 	private stepMode = false;
-	private hintState: 0 | 1 | 2 = 0;
+	// How many of the move-to-find's hint steps are showing.
+	private hintState = 0;
+	private hintComment: HTMLElement | null = null;
+	private boardColumn: HTMLElement | null = null;
 	private puzzleHighWater = -1;
 	private puzzleTally = new PuzzleTally();
 	private puzzleReport: HTMLElement | null = null;
-	private boardColumn: HTMLElement | null = null;
 	private puzzleBtn: HTMLElement | null = null;
 	private stepBtn: HTMLElement | null = null;
 	private hintBtn: HTMLElement | null = null;
@@ -661,14 +664,12 @@ export class PgnViewer {
 	private activatePuzzleMode(): void {
 		this.puzzleMode = true;
 		this.puzzleComplete = false;
-		this.hintState = 0;
+		this.clearHint();
 		this.clearPuzzleReport();
 		this.puzzleBtn?.addClass("sfb-chess-toggle-active");
 		this.stepBtn?.addClass("sfb-chess-btn-hidden");
 		this.resetBtn?.removeClass("sfb-chess-btn-hidden");
 		this.hintBtn?.removeClass("sfb-chess-btn-hidden");
-		this.hintBtn?.removeClass("sfb-chess-toggle-active");
-		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
 		this.autoPlayOpponentIfNeeded();
 		this.updateMoveVisibility();
 		this.enablePuzzleInput();
@@ -677,15 +678,12 @@ export class PgnViewer {
 	private deactivatePuzzleMode(): void {
 		this.puzzleMode = false;
 		this.puzzleComplete = false;
-		this.hintState = 0;
+		this.clearHint();
 		this.clearPuzzleReport();
 		this.puzzleBtn?.removeClass("sfb-chess-toggle-active");
 		this.stepBtn?.removeClass("sfb-chess-btn-hidden");
 		this.resetBtn?.addClass("sfb-chess-btn-hidden");
 		this.hintBtn?.addClass("sfb-chess-btn-hidden");
-		this.hintBtn?.removeClass("sfb-chess-toggle-active");
-		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
-		this.boardManager.clearHintMarkers();
 		this.boardManager.disablePuzzleInput();
 		this.revealAllMoves();
 	}
@@ -708,11 +706,8 @@ export class PgnViewer {
 		if (!this.puzzleMode) return;
 		this.puzzleComplete = false;
 		this.puzzleHighWater = -1;
-		this.hintState = 0;
+		this.clearHint();
 		this.clearPuzzleReport();
-		this.hintBtn?.removeClass("sfb-chess-toggle-active");
-		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
-		this.boardManager.clearHintMarkers();
 		this.boardManager.disablePuzzleInput();
 		this.goToStart();
 		this.puzzleMode = true;
@@ -953,10 +948,7 @@ export class PgnViewer {
 		const id = "m-" + idx;
 		if (idx > this.puzzleHighWater) this.puzzleHighWater = idx;
 		this.puzzleTally.recordCorrect(idx);
-		this.hintState = 0;
-		this.hintBtn?.removeClass("sfb-chess-toggle-active");
-		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
-		this.boardManager.clearHintMarkers();
+		this.clearHint();
 		this.updateMoveVisibility();
 		this.goToMoveById(id);
 
@@ -1024,27 +1016,46 @@ export class PgnViewer {
 		this.puzzleReport = null;
 	}
 
+	// Each press shows the next step for the move to find: its comment, then
+	// the piece to move, then the move as an arrow.
 	private showHint(): void {
 		if (!this.puzzleMode) return;
 		if (this.puzzleComplete) return;
-		const currentIdx = this.getCurrentMainlineIndex();
-		const nextIdx = currentIdx + 1;
+		const nextIdx = this.getCurrentMainlineIndex() + 1;
 		if (nextIdx >= this.mainlineMoves.length) return;
 
 		const expected = this.mainlineMoves[nextIdx];
+		const steps = hintSteps(expected.comment);
+		if (this.hintState >= steps.length) return;
 
-		if (this.hintState === 0) {
-			this.hintState = 1;
-			this.boardManager.clearHintMarkers();
+		const step = steps[this.hintState];
+		this.hintState++;
+		if (step === "comment" && expected.comment) {
+			this.showHintComment(expected.comment);
+		} else if (step === "piece") {
 			this.boardManager.addHintFromMarker(expected.from);
-			this.hintBtn?.addClass("sfb-chess-toggle-active");
-			this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
-		} else if (this.hintState === 1) {
-			this.hintState = 2;
-			this.boardManager.addHintToMarker(expected.to);
-			this.hintBtn?.addClass("sfb-chess-toggle-active-strong");
-			this.hintBtn?.removeClass("sfb-chess-toggle-active");
+		} else if (step === "arrow") {
+			this.boardManager.addHintArrow(expected.from, expected.to);
 		}
+		const last = this.hintState === steps.length;
+		this.hintBtn?.toggleClass("sfb-chess-toggle-active", !last);
+		this.hintBtn?.toggleClass("sfb-chess-toggle-active-strong", last);
+	}
+
+	private showHintComment(text: string): void {
+		this.hintComment?.remove();
+		if (!this.boardColumn) return;
+		this.hintComment = this.boardColumn.createDiv({ cls: "sfb-chess-hint-comment" });
+		this.renderCommentText(this.hintComment, text);
+	}
+
+	private clearHint(): void {
+		this.hintState = 0;
+		this.hintBtn?.removeClass("sfb-chess-toggle-active");
+		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
+		this.boardManager.clearHintMarkers();
+		this.hintComment?.remove();
+		this.hintComment = null;
 	}
 
 	// --- Navigation ---

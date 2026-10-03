@@ -566,14 +566,22 @@
     opacity: 0.85;
 }
 
-.cm-chessboard .markers .marker.marker-hint-to-light {
-    fill: rgba(100, 190, 220, 0.85);
-    opacity: 1;
+.cm-chessboard .arrow-hint .arrow-head {
+    fill: rgba(70, 160, 190, 0.9);
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-hint .arrow-line {
+    stroke: rgba(70, 160, 190, 0.9);
+    stroke-linecap: round;
 }
 
-.cm-chessboard .markers .marker.marker-hint-to-dark {
-    fill: rgba(70, 160, 190, 0.85);
-    opacity: 1;
+/* The comment on the move to find, shown by the first Hint press. */
+.sfb-chess-hint-comment {
+    padding: 6px 8px;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    background: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
 }
 
 /* ============================================================

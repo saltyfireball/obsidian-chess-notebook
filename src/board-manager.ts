@@ -16,8 +16,7 @@ import {
 	LAST_MOVE_DARK,
 	HINT_FROM_LIGHT,
 	HINT_FROM_DARK,
-	HINT_TO_LIGHT,
-	HINT_TO_DARK,
+	HINT_ARROW,
 	SHAPE_ARROWS,
 	SHAPE_SQUARES,
 	isLightSquare,
@@ -90,7 +89,9 @@ class BoardArrows extends Arrows {
 		const marker = group?.querySelector("marker");
 		const line = group?.querySelector("line");
 		if (!marker || !line) return;
-		marker.id = this.idPrefix + arrow.from + arrow.to;
+		// The type is in the id too: two arrows on the same squares (a hint
+		// over a PGN drawing) would otherwise share one head colour.
+		marker.id = this.idPrefix + arrow.type.class + "-" + arrow.from + arrow.to;
 		line.setAttribute("marker-end", `url(#${marker.id})`);
 	}
 }
@@ -246,8 +247,7 @@ export class BoardManager {
 	clearHintMarkers(): void {
 		this.board.removeMarkers(HINT_FROM_LIGHT);
 		this.board.removeMarkers(HINT_FROM_DARK);
-		this.board.removeMarkers(HINT_TO_LIGHT);
-		this.board.removeMarkers(HINT_TO_DARK);
+		this.board.removeArrows(HINT_ARROW);
 	}
 
 	addHintFromMarker(square: string): void {
@@ -255,9 +255,8 @@ export class BoardManager {
 		this.board.addMarker(type, square);
 	}
 
-	addHintToMarker(square: string): void {
-		const type = isLightSquare(square) ? HINT_TO_LIGHT : HINT_TO_DARK;
-		this.board.addMarker(type, square);
+	addHintArrow(from: string, to: string): void {
+		this.board.addArrow(HINT_ARROW, from, to);
 	}
 
 	destroy(): void {
