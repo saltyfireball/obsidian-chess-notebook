@@ -10,6 +10,7 @@ import { Markers } from "cm-chessboard/src/extensions/markers/Markers.js";
 import { Arrows } from "cm-chessboard/src/extensions/arrows/Arrows.js";
 import { Svg } from "cm-chessboard/src/lib/Svg.js";
 import { PIECES_SVG, MARKERS_SVG, ARROWS_SVG } from "./sprites";
+import { arrowMarkerId } from "./arrow-id";
 import { getPieceSet, replacePiecesInContainer } from "./fan-pieces";
 import {
 	LAST_MOVE_LIGHT,
@@ -90,9 +91,7 @@ class BoardArrows extends Arrows {
 		const marker = group?.querySelector("marker");
 		const line = group?.querySelector("line");
 		if (!marker || !line) return;
-		// The type is in the id too: two arrows on the same squares (a hint
-		// over a PGN drawing) would otherwise share one head colour.
-		marker.id = this.idPrefix + arrow.type.class + "-" + arrow.from + arrow.to;
+		marker.id = arrowMarkerId(this.idPrefix, arrow.type.class, arrow.from, arrow.to);
 		line.setAttribute("marker-end", `url(#${marker.id})`);
 	}
 }
