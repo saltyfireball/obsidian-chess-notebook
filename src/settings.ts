@@ -3,10 +3,26 @@ import type { SettingDefinitionItem } from "obsidian";
 import type ChessPlugin from "./main";
 import { DEFAULT_SETTINGS } from "./types";
 import { listPieceSets } from "./fan-pieces";
+import { BOARD_SIZES } from "./board-size";
 
 const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
+const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+
+// The code block names rendered besides chessboard, and what each renders as.
+const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [
+	{ key: "chessBlocks", name: "Render chess blocks", desc: "A FEN or a PGN, told apart by its text." },
+	{ key: "pgnBlocks", name: "Render pgn blocks", desc: "Rendered as type:pgn." },
+	{ key: "fenBlocks", name: "Render fen blocks", desc: "Rendered as type:fen." },
+];
+const BOARD_SIZE_DESC = "Default board width. Override per block with size:small|medium|large or a width in pixels.";
+
+function boardSizeOptions(): Record<string, string> {
+	const options: Record<string, string> = {};
+	for (const name of Object.keys(BOARD_SIZES)) options[name] = `${name} (${BOARD_SIZES[name]}px)`;
+	return options;
+}
 
 // Built by hand: Object.fromEntries is ES2019, past this tsconfig's lib, so
 // it types as any and the review flags it.
@@ -51,6 +67,23 @@ export class ChessSettingTab extends PluginSettingTab {
 			},
 			{
 				type: "group",
+				heading: "Board",
+				items: [
+					{
+						name: "Board size",
+						desc: BOARD_SIZE_DESC,
+						aliases: ["size", "width"],
+						control: {
+							type: "dropdown",
+							key: "boardSize",
+							options: boardSizeOptions(),
+							defaultValue: DEFAULT_SETTINGS.boardSize,
+						},
+					},
+				],
+			},
+			{
+				type: "group",
 				heading: "Playback",
 				items: [
 					{
@@ -78,6 +111,16 @@ export class ChessSettingTab extends PluginSettingTab {
 					},
 				],
 			},
+			{
+				type: "group",
+				heading: "Code blocks",
+				items: ALIAS_TOGGLES.map((t) => ({
+					name: t.name,
+					desc: `${t.desc} ${ALIASES_DESC}`,
+					aliases: ["alias", "chess", "pgn", "fen", "code block"],
+					control: { type: "toggle" as const, key: t.key, defaultValue: DEFAULT_SETTINGS[t.key] },
+				})),
+			},
 		];
 	}
 
@@ -92,6 +135,23 @@ export class ChessSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("How to use").setHeading();
 		renderReference(containerEl);
+
+		new Setting(containerEl).setName("Board").setHeading();
+
+		new Setting(containerEl)
+			.setName("Board size")
+			.setDesc(BOARD_SIZE_DESC)
+			.addDropdown((dropdown) => {
+				const options = boardSizeOptions();
+				for (const value of Object.keys(options)) {
+					dropdown.addOption(value, options[value]);
+				}
+				dropdown.setValue(this.plugin.settings.boardSize);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.boardSize = value;
+					await this.plugin.saveSettings();
+				});
+			});
 
 		new Setting(containerEl).setName("Playback").setHeading();
 
@@ -127,6 +187,20 @@ export class ChessSettingTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 			});
 		});
+
+		new Setting(containerEl).setName("Code blocks").setHeading();
+
+		for (const t of ALIAS_TOGGLES) {
+			new Setting(containerEl)
+				.setName(t.name)
+				.setDesc(`${t.desc} ${ALIASES_DESC}`)
+				.addToggle((toggle) =>
+					toggle.setValue(this.plugin.settings[t.key]).onChange(async (value) => {
+						this.plugin.settings[t.key] = value;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
 	}
 }
 
@@ -199,6 +273,7 @@ function renderReference(containerEl: HTMLElement): void {
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
+		["size:small|medium|large|N", "Board width: small (300px), medium (420px), large (560px), or N pixels (default: the Board size setting)"],
 		["start_at:start|end|N", "Initial position: start, end, or half-move index N counted from 0 (0 is after White's first move)"],
 		['title:"..."', "Display a title in the header bar"],
 		['white:"..."', "Override or set White player name"],
