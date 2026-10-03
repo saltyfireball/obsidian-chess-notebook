@@ -28,6 +28,8 @@ A game:
 ```
 ````
 
+Or copy a FEN or PGN and run **Paste a chess position or game as a board** from the command palette: it inserts a new block with the right `type:` at the cursor.
+
 ## Features
 
 ### Games with comments, variations and annotations

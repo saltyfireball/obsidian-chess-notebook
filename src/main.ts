@@ -1,4 +1,5 @@
-import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
+import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
+import { boardBlockFor, insideCodeBlock } from "./paste-board";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
@@ -61,6 +62,7 @@ export default class ChessPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadSettings();
 		this.addSettingTab(new ChessSettingTab(this.app, this));
+		this.addPasteCommand();
 		injectSprites(document);
 
 		// Lets .pgn / .fen files open in Obsidian's editor, so a src: block can be
@@ -128,6 +130,35 @@ export default class ChessPlugin extends Plugin {
 		this.fileCache.clear();
 		this.fileBoundBlocks.clear();
 		this.blockChildren.clear();
+	}
+
+	// Inserts a new chessboard block for the FEN or PGN on the clipboard at the
+	// cursor. Selected text is replaced, as a paste would; no block is edited.
+	private addPasteCommand(): void {
+		this.addCommand({
+			id: "paste-as-board",
+			name: "Paste a chess position or game as a board",
+			editorCallback: async (editor: Editor) => {
+				const cursor = editor.getCursor("from");
+				if (insideCodeBlock(editor.getValue().split("\n"), cursor.line)) {
+					new Notice("Place the caret outside the code block first.");
+					return;
+				}
+				let text: string;
+				try {
+					text = await navigator.clipboard.readText();
+				} catch {
+					new Notice("Could not read the clipboard.");
+					return;
+				}
+				const block = boardBlockFor(text, editor.getLine(cursor.line).slice(0, cursor.ch).trim().length > 0);
+				if (!block) {
+					new Notice("The clipboard holds no chess position or game.");
+					return;
+				}
+				editor.replaceSelection(block);
+			},
+		});
 	}
 
 	private forgetBlock(child: ChessBlockChild): void {
