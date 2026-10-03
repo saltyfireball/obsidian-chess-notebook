@@ -8,6 +8,14 @@ import { BOARD_SIZES } from "./board-size";
 const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
+const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+
+// The code block names rendered besides chessboard, and what each renders as.
+const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [
+	{ key: "chessBlocks", name: "Render chess blocks", desc: "A FEN or a PGN, told apart by its text." },
+	{ key: "pgnBlocks", name: "Render pgn blocks", desc: "Rendered as type:pgn." },
+	{ key: "fenBlocks", name: "Render fen blocks", desc: "Rendered as type:fen." },
+];
 const BOARD_SIZE_DESC = "Default board width. Override per block with size:small|medium|large or a width in pixels.";
 
 function boardSizeOptions(): Record<string, string> {
@@ -103,6 +111,16 @@ export class ChessSettingTab extends PluginSettingTab {
 					},
 				],
 			},
+			{
+				type: "group",
+				heading: "Code blocks",
+				items: ALIAS_TOGGLES.map((t) => ({
+					name: t.name,
+					desc: `${t.desc} ${ALIASES_DESC}`,
+					aliases: ["alias", "chess", "pgn", "fen", "code block"],
+					control: { type: "toggle" as const, key: t.key, defaultValue: DEFAULT_SETTINGS[t.key] },
+				})),
+			},
 		];
 	}
 
@@ -169,6 +187,20 @@ export class ChessSettingTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 			});
 		});
+
+		new Setting(containerEl).setName("Code blocks").setHeading();
+
+		for (const t of ALIAS_TOGGLES) {
+			new Setting(containerEl)
+				.setName(t.name)
+				.setDesc(`${t.desc} ${ALIASES_DESC}`)
+				.addToggle((toggle) =>
+					toggle.setValue(this.plugin.settings[t.key]).onChange(async (value) => {
+						this.plugin.settings[t.key] = value;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
 	}
 }
 

@@ -8,6 +8,15 @@ import { resolvePieceSet } from "./fan-pieces";
 import { parseBoardSize, resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
+import { BLOCK_ALIASES, aliasType, looksLikeFen } from "./chess-format";
+import type { BlockAlias } from "./chess-format";
+
+// The setting that turns each alias on.
+const ALIAS_SETTING: Record<BlockAlias, "chessBlocks" | "pgnBlocks" | "fenBlocks"> = {
+	chess: "chessBlocks",
+	pgn: "pgnBlocks",
+	fen: "fenBlocks",
+};
 
 interface FileBoundBlock {
 	el: HTMLElement;
@@ -83,16 +92,32 @@ export default class ChessPlugin extends Plugin {
 			}),
 		);
 
-		this.registerMarkdownCodeBlockProcessor(
-			"chessboard",
-			(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-				const child = new ChessBlockChild(el, (gone) => this.forgetBlock(gone));
-				this.blockChildren.set(el, child);
-				ctx.addChild(child);
-				const fenceLine = this.extractFenceLine(el, ctx);
-				void this.processCodeBlock(source, el, fenceLine, ctx.sourcePath);
-			},
-		);
+		this.registerBlockProcessor("chessboard", null);
+		// Obsidian reads processors at load, so a changed alias setting needs a reload.
+		for (const alias of BLOCK_ALIASES) {
+			if (this.settings[ALIAS_SETTING[alias]]) this.registerBlockProcessor(alias, alias);
+		}
+	}
+
+	private registerBlockProcessor(language: string, alias: BlockAlias | null): void {
+		const handler = (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+			const child = new ChessBlockChild(el, (gone) => this.forgetBlock(gone));
+			this.blockChildren.set(el, child);
+			ctx.addChild(child);
+			let fenceLine = this.extractFenceLine(el, ctx, language);
+			// An alias block is a chessboard block with its type: implied.
+			if (alias && !/type:(fen|pgn)/i.test(fenceLine)) {
+				const type = aliasType(alias, source, this.parseOptions(fenceLine).src);
+				fenceLine = `type:${type} ${fenceLine}`.trim();
+			}
+			void this.processCodeBlock(source, el, fenceLine, ctx.sourcePath);
+		};
+		try {
+			this.registerMarkdownCodeBlockProcessor(language, handler);
+		} catch (e: unknown) {
+			// Another processor already owns this name; leave it to that one.
+			console.warn(`chess-notebook: could not register ${language} code blocks`, e);
+		}
 	}
 
 	onunload(): void {
@@ -117,7 +142,7 @@ export default class ChessPlugin extends Plugin {
 		}
 	}
 
-	private extractFenceLine(el: HTMLElement, ctx: MarkdownPostProcessorContext): string {
+	private extractFenceLine(el: HTMLElement, ctx: MarkdownPostProcessorContext, language: string): string {
 		try {
 			const info = ctx.getSectionInfo(el);
 			if (!info || !info.text) {
@@ -125,7 +150,7 @@ export default class ChessPlugin extends Plugin {
 			}
 			const lines = info.text.split("\n");
 			const fenceLineText = lines[info.lineStart] ?? "";
-			const match = /^`{3,}\s*chessboard\s*(.*)/i.exec(fenceLineText);
+			const match = new RegExp("^`{3,}\\s*" + language + "\\s*(.*)", "i").exec(fenceLineText);
 			return match ? match[1].trim() : "";
 		} catch {
 			return "";
@@ -181,7 +206,7 @@ export default class ChessPlugin extends Plugin {
 				const fens = content
 					.split("\n")
 					.map((l) => l.trim())
-					.filter((l) => l.length > 0 && this.looksLikeFen(l))
+					.filter((l) => l.length > 0 && looksLikeFen(l))
 					.map((l) => normalizeFen(l));
 
 				if (fens.length > 1) {
@@ -405,12 +430,12 @@ export default class ChessPlugin extends Plugin {
 
 		const trimmed = source.trim();
 
-		if (this.looksLikeFen(trimmed)) {
+		if (looksLikeFen(trimmed)) {
 			return { type: "fen", content: trimmed, options: fenceOpts };
 		}
 
 		const allLines = trimmed.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
-		if (allLines.length > 1 && allLines.every((l) => this.looksLikeFen(l))) {
+		if (allLines.length > 1 && allLines.every((l) => looksLikeFen(l))) {
 			return { type: "fen", content: trimmed, options: fenceOpts };
 		}
 
@@ -445,15 +470,6 @@ export default class ChessPlugin extends Plugin {
 			result: inline.result ?? fence.result,
 			src: inline.src ?? fence.src,
 		};
-	}
-
-	private looksLikeFen(text: string): boolean {
-		const parts = text.split(/\s+/);
-		if (parts.length < 1 || parts.length > 6) {
-			return false;
-		}
-		const ranks = parts[0].split("/");
-		return ranks.length === 8;
 	}
 
 	async loadSettings(): Promise<void> {
