@@ -159,12 +159,13 @@ Boards follow Obsidian's theme.
 
 ### Settings
 
-The settings tab has a quick reference for blocks, header tags and options, plus:
+The settings tab has a How to use page, a quick reference for blocks, header tags and options. It also has:
 
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
+<img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">
 
 ## Options
 
