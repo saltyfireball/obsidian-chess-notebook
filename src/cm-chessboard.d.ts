@@ -106,3 +106,19 @@ declare module "cm-chessboard/src/extensions/arrows/Arrows.js" {
 		drawArrow(arrow: { from: string; to: string; type: ArrowType }): void;
 	}
 }
+
+declare module "cm-chessboard/src/model/Extension.js" {
+	export const EXTENSION_POINT: {
+		positionChanged: string;
+		boardChanged: string;
+		afterRedrawBoard: string;
+	};
+	export class Extension {
+		constructor(chessboard: unknown);
+		chessboard: {
+			getPiece(square: string): string | null;
+			view: { svg: SVGSVGElement };
+		};
+		registerExtensionPoint(name: string, callback: () => void): void;
+	}
+}
