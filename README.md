@@ -28,6 +28,8 @@ A game:
 ```
 ````
 
+Or copy a FEN or PGN and run **Paste a chess position or game as a board** from the command palette: it inserts a new block with the right `type:` at the cursor.
+
 ## Features
 
 ### Games with comments, variations and annotations
@@ -89,7 +91,7 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 ### Puzzle mode
 
-Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
+Puzzle mode hides the moves. Play the next move on the board; picking up a piece puts a dot on each square it can move to (a ring on a piece it can take). A right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
 
 ![Solving the finish of the Opera Game with the help of a hint](docs/media/puzzle.gif)
 
@@ -156,6 +158,27 @@ The play button plays the game through at the speed set in the settings. Press i
 ```
 ````
 
+A PGN that holds several games, like an export from a game site, gets a game picker above the board: previous/next buttons and "Game 2 of 14 - White vs Black". `game:N` opens game N (counted from 1), and `game:"White vs Black"` opens the game between those players.
+
+````markdown
+```chessboard type:pgn src:"Games/Club night.pgn" game:3
+```
+````
+
+### chess, pgn and fen blocks
+
+Notes written for other tools work without edits: `pgn`, `fen` and `chess` code blocks render too. A `pgn` block is a `chessboard type:pgn` block and a `fen` block is a `chessboard type:fen` block. A `chess` block holds either: text with `[Tags]` or move numbers is a PGN, anything else a FEN. All the options work on these blocks as well.
+
+<img src="docs/media/pgn-block.png" width="420" alt="A pgn code block rendered as a board">
+
+````markdown
+```pgn title:"Scholar's Mate"
+1.e4 e5 2.Bc4 Nc6 3.Qh5 Nf6 4.Qxf7# 1-0
+```
+````
+
+Each name can be turned off in the settings, for vaults where something else already renders it. Obsidian reads code block names when it loads, so reload it after changing one.
+
 ### Eight piece sets and figurine notation
 
 Pick a default piece set in the settings, or set one per block with `pieces:name`: `standard` (default), `celtic`, `fantasy`, `firi`, `kiwen-suwi`, `rhosgfx`, `shapes`, `spatial`.
@@ -178,12 +201,25 @@ Boards follow Obsidian's theme.
 
 ![The Opera Game in the light theme](docs/media/light-theme.png)
 
+### Sound and screen readers
+
+Both are off by default and turned on in the settings.
+
+- **Move sounds** play a short tone for each move and a lower one for captures, at the volume you set. The tones are made on the fly, with no audio files and no network.
+- **Announce moves** has screen readers read out each move as you step through a game, for example "12. Nf3, knight to f3" or "5... exd4, pawn takes d4", including castling, promotion, check and mate.
+
+Every board also labels its squares for screen readers with what stands on them, for example "e4, white knight" or "a3, empty".
+
 ### Settings
 
-The settings tab has a How to use page, a quick reference for blocks, header tags and options. It also has:
+The settings tab has a How to use page, a quick reference for blocks, header tags, options, and sound and accessibility. It also has:
 
+- **Board size**: the default board width, small, medium or large. Override it per block with `size:`.
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
+- **Move sounds** and **Sound volume**: a tone for each move and capture (off by default).
+- **Announce moves**: read each move out to screen readers (off by default).
+- **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all on by default). Reload Obsidian after changing one.
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
 <img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">
@@ -204,8 +240,10 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
+| `size:small\|medium\|large\|N` | Board width: `small` (300px), `medium` (420px), `large` (560px), or `N` pixels, e.g. `size:360` (default: the Board size setting) |
 | `start_at:start\|end\|N` | Initial position: the start, the end, or index N (see below) |
 | `src:path` | Read the FEN or PGN from a file in the vault, e.g. `src:"Games/Opera Game.pgn"` |
+| `game:N`, `game:"White vs Black"` | In a PGN with several games, open game N (counted from 1) or the game between those players |
 | `title:"..."` | Title in the header bar |
 | `white:"..."`, `black:"..."` | Set or override the player names |
 | `event:"..."`, `site:"..."`, `date:"..."`, `round:"..."`, `eco:"..."`, `result:"..."` | Set or override the game details |
@@ -230,13 +268,9 @@ npm test
 npm run build
 ```
 
-The images and GIFs in `docs/media/` are taken in the real Obsidian app by the showcase runner, a separate repo checked out next to this one as `../obsidian-plugin-showcase`. This plugin's scenes are in its `plugins/chess-notebook/scenes.mjs`. Run `npm run build` here first so `main.js` is current, then from the showcase folder:
+To try a change in Obsidian, copy `main.js`, `manifest.json` and `styles.css` into `<your vault>/.obsidian/plugins/chess-notebook/` and reload the plugin.
 
-```sh
-NODE_PATH=$(npm root -g) node src/run.mjs plugins/chess-notebook/scenes.mjs [scene ...] --out ../obsidian-chess-notebook/docs/media
-```
-
-It opens Obsidian from /Applications against a throwaway vault and profile, so your own vaults and settings are not touched. It needs Playwright (installed globally, found through `NODE_PATH`) and ffmpeg for the GIFs. `--smoke` instead only checks that the plugin loads and renders a board.
+The images and GIFs in `docs/media/` are captured in the real Obsidian app with the maintainer's own capture tool, which is not part of this repo. To change one, open an issue or attach your own screenshot to the pull request.
 
 ## License
 
