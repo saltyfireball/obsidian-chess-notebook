@@ -76,6 +76,7 @@ export class PgnViewer {
 	private autoPlayTimer: number | null = null;
 	private autoPlaySpeed: number;
 	private timers = new Set<number>();
+	private destroyed = false;
 
 	private wrapper: HTMLElement;
 	private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -523,9 +524,9 @@ export class PgnViewer {
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
 		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
-			copyWithFeedback(copyFen, this.currentFen(), "FEN", (fn, ms) => this.later(fn, ms)));
+			copyWithFeedback(copyFen, this.currentFen(), "FEN", this.copyHooks()));
 		const copyPgn: HTMLElement = this.createNavButton(controls, "Copy PGN", ICON_COPY, () =>
-			copyWithFeedback(copyPgn, this.rawPgn, "PGN", (fn, ms) => this.later(fn, ms)));
+			copyWithFeedback(copyPgn, this.rawPgn, "PGN", this.copyHooks()));
 	}
 
 	// The position on the board: the start, or the move the viewer is on.
@@ -1411,7 +1412,13 @@ export class PgnViewer {
 		}
 	}
 
+	// What a copy button needs from the viewer: its timer, and whether it is still open.
+	private copyHooks() {
+		return { schedule: (fn: () => void, ms: number) => this.later(fn, ms), alive: () => !this.destroyed };
+	}
+
 	private later(fn: () => void, ms: number): void {
+		if (this.destroyed) return;
 		const id = window.setTimeout(() => {
 			this.timers.delete(id);
 			fn();
@@ -1420,6 +1427,7 @@ export class PgnViewer {
 	}
 
 	destroy(): void {
+		this.destroyed = true;
 		this.stopAutoPlay();
 		for (const id of this.timers) window.clearTimeout(id);
 		this.timers.clear();
