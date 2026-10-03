@@ -2,6 +2,8 @@ import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFil
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
+import { GamePickerViewer } from "./game-picker";
+import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
@@ -186,7 +188,12 @@ export default class ChessPlugin extends Plugin {
 					child.setViewer(new FenViewer(el, fens[0] ?? normalizeFen(content.trim()), parsed.options, this.settings));
 				}
 			} else {
-				child.setViewer(new PgnViewer(el, content, parsed.options, this.settings));
+				const games = splitPgnGames(content);
+				if (games.length > 1) {
+					child.setViewer(new GamePickerViewer(el, games, parsed.options, this.settings));
+				} else {
+					child.setViewer(new PgnViewer(el, content, parsed.options, this.settings));
+				}
 			}
 		} catch (e: unknown) {
 			const msg = e instanceof Error ? e.message : "Unknown error rendering chessboard";
@@ -293,11 +300,17 @@ export default class ChessPlugin extends Plugin {
 			eco: null,
 			result: null,
 			src: null,
+			game: null,
 		};
 
 		const srcMatch = /src:(?:"([^"]+)"|(\S+))/i.exec(line);
 		if (srcMatch) {
 			opts.src = srcMatch[1] ?? srcMatch[2];
+		}
+
+		const gameMatch = /game:(?:"([^"]+)"|(\d+))/i.exec(line);
+		if (gameMatch) {
+			opts.game = gameMatch[1] ?? parseInt(gameMatch[2]);
 		}
 
 		const boolMatch = /center:(true|false)/i.exec(line);
@@ -433,6 +446,7 @@ export default class ChessPlugin extends Plugin {
 			eco: inline.eco ?? fence.eco,
 			result: inline.result ?? fence.result,
 			src: inline.src ?? fence.src,
+			game: inline.game ?? fence.game,
 		};
 	}
 

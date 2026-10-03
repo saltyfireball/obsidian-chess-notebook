@@ -145,6 +145,13 @@ The play button plays the game through at the speed set in the settings. Press i
 ```
 ````
 
+A PGN that holds several games, like an export from a game site, gets a game picker above the board: previous/next buttons and "Game 2 of 14 - White vs Black". `game:N` opens game N (counted from 1), and `game:"White vs Black"` opens the game between those players.
+
+````markdown
+```chessboard type:pgn src:"Games/Club night.pgn" game:3
+```
+````
+
 ### Eight piece sets and figurine notation
 
 Pick a default piece set in the settings, or set one per block with `pieces:name`: `standard` (default), `celtic`, `fantasy`, `firi`, `kiwen-suwi`, `rhosgfx`, `shapes`, `spatial`.
@@ -195,6 +202,7 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `pieces:name` | Piece set for this block |
 | `start_at:start\|end\|N` | Initial position: the start, the end, or index N (see below) |
 | `src:path` | Read the FEN or PGN from a file in the vault, e.g. `src:"Games/Opera Game.pgn"` |
+| `game:N`, `game:"White vs Black"` | In a PGN with several games, open game N (counted from 1) or the game between those players |
 | `title:"..."` | Title in the header bar |
 | `white:"..."`, `black:"..."` | Set or override the player names |
 | `event:"..."`, `site:"..."`, `date:"..."`, `round:"..."`, `eco:"..."`, `result:"..."` | Set or override the game details |
