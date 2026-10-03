@@ -6,6 +6,7 @@ import { drawReason, positionKey } from "./draw";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
+import { drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
@@ -58,6 +59,15 @@ export class PgnViewer {
 	private initialMode: ChessMode;
 
 	private puzzleColor: "w" | "b" = "w";
+
+	// Drill mode: you play puzzleColor, the board replies with a move picked
+	// from the PGN's line or its variations.
+	private drillMode = false;
+	private drillComplete = false;
+	private drillCursor: DrillCursor = { line: [], idx: 0 };
+	private drillPath: MoveNode[] = [];
+	private drillStatus: HTMLElement | null = null;
+	private drillBranches: string[] = [];
 	private notation: Notation = "san";
 	private pieceSetName: string = STANDARD_PIECE_SET;
 	private pieceSetReady = false;
@@ -134,6 +144,10 @@ export class PgnViewer {
 			this.boardManager.flip();
 			this.puzzleColor = "b";
 		}
+		if (options.mode === "drill" && options.color) {
+			if (options.color !== this.puzzleColor) this.boardManager.flip();
+			this.puzzleColor = options.color;
+		}
 		this.boardColumn = boardColumn;
 		this.buildControls(boardColumn);
 
@@ -145,7 +159,9 @@ export class PgnViewer {
 		this.applyStartAt(options.startAt);
 		this.updateActiveComment();
 
-		if (this.initialMode === "puzzle") {
+		if (this.initialMode === "drill") {
+			this.activateDrillMode();
+		} else if (this.initialMode === "puzzle") {
 			this.togglePuzzleMode();
 		} else if (this.initialMode === "step") {
 			this.toggleStepMode();
@@ -570,7 +586,7 @@ export class PgnViewer {
 	// --- Auto-play ---
 
 	private toggleAutoPlay(): void {
-		if (this.puzzleMode || this.stepMode) return;
+		if (this.puzzleMode || this.stepMode || this.drillMode) return;
 		if (this.autoPlaying) {
 			this.stopAutoPlay();
 		} else {
@@ -703,6 +719,10 @@ export class PgnViewer {
 	}
 
 	private resetPuzzle(): void {
+		if (this.drillMode) {
+			this.startDrillRun();
+			return;
+		}
 		if (!this.puzzleMode) return;
 		this.puzzleComplete = false;
 		this.puzzleHighWater = -1;
@@ -874,7 +894,8 @@ export class PgnViewer {
 				}
 			},
 			(from: string, to: string) => {
-				this.handlePuzzleMove(from, to);
+				if (this.drillMode) this.handleDrillMove(from, to);
+				else this.handlePuzzleMove(from, to);
 			},
 		);
 	}
@@ -974,13 +995,16 @@ export class PgnViewer {
 	private showPuzzleComplete(): void {
 		this.puzzleComplete = true;
 		this.boardManager.disablePuzzleInput();
-		this.showPuzzleReport();
+		this.showPuzzleReport(this.mainlineMoves);
+		this.showCompleteBanner("Puzzle complete!");
+	}
 
+	private showCompleteBanner(text: string): void {
 		const boardWrapper = this.wrapper.querySelector(".sfb-chess-board-wrapper");
 		if (!boardWrapper) return;
 
 		const banner = (boardWrapper as HTMLElement).createDiv({ cls: "sfb-chess-puzzle-complete" });
-		banner.textContent = "Puzzle complete!";
+		banner.textContent = text;
 
 		const dismiss = (): void => {
 			banner.remove();
@@ -991,18 +1015,21 @@ export class PgnViewer {
 	}
 
 	// The end-of-puzzle report goes under the controls; each missed move in it
-	// jumps the board to that move.
-	private showPuzzleReport(): void {
+	// jumps the board to that move. The tally's indexes point into moves.
+	private showPuzzleReport(moves: MoveNode[]): void {
 		this.clearPuzzleReportEl();
 		if (!this.boardColumn) return;
 		this.puzzleReport = renderPuzzleReport(
 			this.boardColumn,
 			this.puzzleTally,
 			(idx) => {
-				const node = this.mainlineMoves[idx];
-				return moveLabel(node.moveNumber, node.color, node.san);
+				const node = moves[idx];
+				return node ? moveLabel(node.moveNumber, node.color, node.san) : "?";
 			},
-			(idx) => this.goToMoveById("m-" + idx),
+			(idx) => {
+				const id = moves[idx] ? this.idOf(moves[idx]) : null;
+				if (id) this.goToMoveById(id);
+			},
 		);
 	}
 
@@ -1019,12 +1046,8 @@ export class PgnViewer {
 	// Each press shows the next step for the move to find: its comment, then
 	// the piece to move, then the move as an arrow.
 	private showHint(): void {
-		if (!this.puzzleMode) return;
-		if (this.puzzleComplete) return;
-		const nextIdx = this.getCurrentMainlineIndex() + 1;
-		if (nextIdx >= this.mainlineMoves.length) return;
-
-		const expected = this.mainlineMoves[nextIdx];
+		const expected = this.moveToFind();
+		if (!expected) return;
 		const steps = hintSteps(expected.comment);
 		if (this.hintState >= steps.length) return;
 
@@ -1040,6 +1063,135 @@ export class PgnViewer {
 		const last = this.hintState === steps.length;
 		this.hintBtn?.toggleClass("sfb-chess-toggle-active", !last);
 		this.hintBtn?.toggleClass("sfb-chess-toggle-active-strong", last);
+	}
+
+	private drillRunning(): boolean {
+		return this.drillMode && !this.drillComplete;
+	}
+
+	private moveToFind(): MoveNode | null {
+		if (this.drillMode) {
+			if (this.drillComplete) return null;
+			return drillChoices(this.drillCursor)[0]?.node ?? null;
+		}
+		if (!this.puzzleMode || this.puzzleComplete) return null;
+		return this.mainlineMoves[this.getCurrentMainlineIndex() + 1] ?? null;
+	}
+
+	// --- Drill mode ---
+
+	private activateDrillMode(): void {
+		this.drillMode = true;
+		this.puzzleBtn?.addClass("sfb-chess-btn-hidden");
+		this.stepBtn?.addClass("sfb-chess-btn-hidden");
+		this.resetBtn?.removeClass("sfb-chess-btn-hidden");
+		this.resetBtn?.setAttribute("aria-label", "Restart drill");
+		this.hintBtn?.removeClass("sfb-chess-btn-hidden");
+		this.startDrillRun();
+	}
+
+	private startDrillRun(): void {
+		this.drillComplete = false;
+		this.drillCursor = { line: this.mainlineMoves, idx: 0 };
+		this.drillPath = [];
+		this.clearHint();
+		this.clearPuzzleReport();
+		this.drillBranches = [];
+		this.setDrillStatus(null);
+		this.boardManager.clearWrongArrow();
+		this.movesContainer.addClass("sfb-chess-moves-hidden");
+		this.currentMoveId = null;
+		this.showBoardAt(null);
+		this.updateActiveMove();
+		this.updateActiveComment();
+		this.continueDrill();
+	}
+
+	// Your turn: wait for your move. The board's turn: play one of the PGN's
+	// moves after a short pause. Nothing left: the drill is over.
+	private continueDrill(): void {
+		const choices = drillChoices(this.drillCursor);
+		if (choices.length === 0) {
+			this.finishDrill();
+			return;
+		}
+		if (this.sideToMove() === this.puzzleColor) {
+			this.enablePuzzleInput();
+			return;
+		}
+		this.boardManager.disablePuzzleInput();
+		this.later(() => {
+			if (!this.drillMode || this.drillComplete) return;
+			const reply = pickChoice(choices, Math.random);
+			if (!reply) return;
+			if (choices.length > 1) this.noteDrillLine(reply, choices);
+			this.playDrillChoice(reply);
+			this.continueDrill();
+		}, 500);
+	}
+
+	private handleDrillMove(from: string, to: string): void {
+		if (this.drillComplete) return;
+		const choices = drillChoices(this.drillCursor);
+		const match = findChoice(choices, from, to);
+		if (match) {
+			this.puzzleTally.recordCorrect(this.drillPath.length);
+			if (choices.length > 1) this.noteDrillLine(match, choices);
+			this.clearHint();
+			this.playDrillChoice(match);
+			this.continueDrill();
+			return;
+		}
+
+		this.puzzleTally.recordWrong(this.drillPath.length);
+		this.boardManager.flashWrong();
+		this.boardManager.showWrongArrow(from, to);
+		this.boardManager.disablePuzzleInput();
+		this.later(() => {
+			this.boardManager.clearWrongArrow();
+			this.resetBoardPosition();
+			if (this.drillMode && !this.drillComplete) this.enablePuzzleInput();
+		}, 800);
+	}
+
+	private playDrillChoice(choice: DrillChoice): void {
+		this.drillPath.push(choice.node);
+		this.drillCursor = choice.next;
+		const id = this.idOf(choice.node);
+		if (id) this.goToMoveById(id);
+	}
+
+	// At each point where the PGN branches, say which move this run follows
+	// and what else it gives there, so other moves are not taken as wrong.
+	private noteDrillLine(chosen: DrillChoice, choices: DrillChoice[]): void {
+		const label = (n: MoveNode): string => moveLabel(n.moveNumber, n.color, n.san);
+		const others = choices.filter((c) => c !== chosen).map((c) => label(c.node));
+		this.drillBranches.push(label(chosen.node) + " (the PGN also has " + others.join(", ") + ")");
+		this.setDrillStatus("This run follows " + this.drillBranches.join(", then ") + ".");
+	}
+
+	private setDrillStatus(text: string | null): void {
+		this.drillStatus?.remove();
+		this.drillStatus = null;
+		if (text === null || !this.boardColumn) return;
+		this.drillStatus = this.boardColumn.createDiv({ cls: "sfb-chess-drill-status", text });
+	}
+
+	private finishDrill(): void {
+		this.drillComplete = true;
+		this.boardManager.disablePuzzleInput();
+		this.clearHint();
+		this.movesContainer.removeClass("sfb-chess-moves-hidden");
+		this.showPuzzleReport(this.drillPath);
+		this.showCompleteBanner("Drill complete!");
+	}
+
+	private sideToMove(): "w" | "b" {
+		return this.getCurrentFen().split(" ")[1] === "b" ? "b" : "w";
+	}
+
+	private idOf(node: MoveNode): string | null {
+		return this.allFlatMoves.find((fm) => fm.node === node)?.id ?? null;
 	}
 
 	private showHintComment(text: string): void {
@@ -1098,6 +1250,7 @@ export class PgnViewer {
 	}
 
 	private goToStart(): void {
+		if (this.drillRunning()) return;
 		this.currentMoveId = null;
 		this.showBoardAt(null);
 		this.updateActiveMove();
@@ -1109,6 +1262,7 @@ export class PgnViewer {
 	}
 
 	private goToEnd(): void {
+		if (this.drillRunning()) return;
 		if (this.mainlineMoves.length === 0) return;
 		if (this.puzzleMode || this.stepMode) {
 			const maxIdx = this.getMaxRevealedIndex();
@@ -1129,6 +1283,7 @@ export class PgnViewer {
 	}
 
 	private nextMove(): void {
+		if (this.drillRunning()) return;
 		if (this.currentMoveId === null) {
 			if (this.mainlineMoves.length > 0) {
 				const maxIdx = this.getMaxRevealedIndex();
@@ -1164,6 +1319,7 @@ export class PgnViewer {
 	}
 
 	private prevMove(): void {
+		if (this.drillRunning()) return;
 		if (this.currentMoveId === null) return;
 
 		const match = /^m-(\d+)$/.exec(this.currentMoveId);

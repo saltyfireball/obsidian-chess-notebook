@@ -17,6 +17,7 @@ import {
 	HINT_FROM_LIGHT,
 	HINT_FROM_DARK,
 	HINT_ARROW,
+	WRONG_ARROW,
 	SHAPE_ARROWS,
 	SHAPE_SQUARES,
 	isLightSquare,
@@ -257,6 +258,14 @@ export class BoardManager {
 
 	addHintArrow(from: string, to: string): void {
 		this.board.addArrow(HINT_ARROW, from, to);
+	}
+
+	showWrongArrow(from: string, to: string): void {
+		this.board.addArrow(WRONG_ARROW, from, to);
+	}
+
+	clearWrongArrow(): void {
+		this.board.removeArrows(WRONG_ARROW);
 	}
 
 	destroy(): void {
