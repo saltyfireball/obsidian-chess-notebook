@@ -2,12 +2,15 @@ import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
 import { parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
+import { drawReason, positionKey } from "./draw";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
 interface FlatMove {
 	node: MoveNode;
 	id: string;
+	// Times the position after this move has occurred in its line, itself included.
+	repeats: number;
 }
 
 const ICON_PUZZLE = "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3.8h1.5c1.38 0 2.5 1.12 2.5 2.5S4.88 15.8 3.5 15.8H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z";
@@ -25,6 +28,7 @@ export class PgnViewer {
 	private startingFen: string;
 	private startingComment: string | null = null;
 	private startingShapes: BoardShapes = { arrows: [], squares: [] };
+	private drawBadge: HTMLElement;
 	private title: string | null = null;
 	private headers: PgnHeaders;
 	private moveElements: Map<string, HTMLElement> = new Map();
@@ -91,7 +95,7 @@ export class PgnViewer {
 		this.pieceSetName = resolvePieceSet(options.pieces ?? settings.fanPieceSet);
 
 		this.allFlatMoves = [];
-		this.flattenMoves(parsed.moves, "m");
+		this.flattenMoves(parsed.moves, "m", [positionKey(this.startingFen)]);
 
 		this.wrapper = container.createDiv({ cls: "sfb-chess-container sfb-chess-pgn" });
 		this.wrapper.setAttribute("tabindex", "0");
@@ -116,6 +120,8 @@ export class PgnViewer {
 	): void {
 		this.pieceSetReady = this.notation === "fan";
 		this.boardManager = new BoardManager(boardWrapper, this.startingFen, settings, this.pieceSetName);
+		this.drawBadge = boardWrapper.createDiv({ cls: "sfb-chess-draw-badge" });
+		this.updateDrawBadge(this.startingFen, 1);
 		if (options.flipped) {
 			this.boardManager.flip();
 			this.puzzleColor = "b";
@@ -172,15 +178,22 @@ export class PgnViewer {
 		this.wrapper.addEventListener("keydown", this.keyboardHandler);
 	}
 
-	private flattenMoves(moves: MoveNode[], prefix: string): void {
+	// path holds the position keys of the line so far. A variation replaces its
+	// parent move, so it continues from the path before that move.
+	private flattenMoves(moves: MoveNode[], prefix: string, path: string[]): void {
+		const startLength = path.length;
 		for (let i = 0; i < moves.length; i++) {
 			const node = moves[i];
 			const id = prefix + "-" + i;
-			this.allFlatMoves.push({ node, id });
+			const key = positionKey(node.fen);
+			const repeats = path.filter((k) => k === key).length + 1;
+			this.allFlatMoves.push({ node, id, repeats });
 			for (let v = 0; v < node.variations.length; v++) {
-				this.flattenMoves(node.variations[v], id + "v" + v);
+				this.flattenMoves(node.variations[v], id + "v" + v, path);
 			}
+			path.push(key);
 		}
+		path.length = startLength;
 	}
 
 	private buildHeaders(raw: Record<string, string>): PgnHeaders {
@@ -900,22 +913,31 @@ export class PgnViewer {
 			this.showBoardAt(null);
 		} else {
 			const flat = this.allFlatMoves.find((fm) => fm.id === this.currentMoveId);
-			if (flat) this.showBoardAt(flat.node);
+			if (flat) this.showBoardAt(flat);
 		}
 	}
 
-	// Puts the board at the position after node (the start when null), with its
-	// last-move highlight and the drawings from its comment.
-	private showBoardAt(node: MoveNode | null): void {
-		if (node === null) {
+	// Puts the board at the position after flat (the start when null), with its
+	// last-move highlight, the drawings from its comment and any draw.
+	private showBoardAt(flat: FlatMove | null): void {
+		if (flat === null) {
 			void this.boardManager.setPosition(this.startingFen, true);
 			this.boardManager.clearHighlights();
 			this.boardManager.showShapes(this.startingShapes);
+			this.updateDrawBadge(this.startingFen, 1);
 		} else {
+			const node = flat.node;
 			void this.boardManager.setPosition(node.fen, true);
 			this.boardManager.highlightLastMove(node.from, node.to);
 			this.boardManager.showShapes(node.shapes);
+			this.updateDrawBadge(node.fen, flat.repeats);
 		}
+	}
+
+	private updateDrawBadge(fen: string, repeats: number): void {
+		const reason = drawReason(fen, repeats);
+		this.drawBadge.toggleClass("is-hidden", reason === null);
+		this.drawBadge.setText(reason ? "1/2 " + reason : "");
 	}
 
 	private onCorrectPuzzleMove(idx: number): void {
@@ -1010,7 +1032,7 @@ export class PgnViewer {
 		if (!flat) return;
 
 		this.currentMoveId = id;
-		this.showBoardAt(flat.node);
+		this.showBoardAt(flat);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.scrollToActiveMove();

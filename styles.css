@@ -584,6 +584,27 @@
     position: relative;
 }
 
+/* Shown over the board's top edge while the position is a draw */
+.sfb-chess-draw-badge {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 10px;
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    font-size: var(--font-ui-small);
+    font-weight: 600;
+    z-index: 50;
+    pointer-events: none;
+}
+
+.sfb-chess-draw-badge.is-hidden {
+    display: none;
+}
+
 .sfb-chess-flash-wrong::after {
     content: "";
     position: absolute;
