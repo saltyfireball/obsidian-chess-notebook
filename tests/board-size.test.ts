@@ -23,6 +23,13 @@ describe("parseBoardSize", () => {
 		expect(parseBoardSize("50%")).toBeNull();
 		expect(parseBoardSize("")).toBeNull();
 	});
+
+	it("is null for names Object.prototype has", () => {
+		expect(parseBoardSize("constructor")).toBeNull();
+		expect(parseBoardSize("__proto__")).toBeNull();
+		expect(parseBoardSize("toString")).toBeNull();
+		expect(resolveBoardSize(parseBoardSize("constructor"), "large")).toBe(560);
+	});
 });
 
 describe("resolveBoardSize", () => {

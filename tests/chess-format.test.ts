@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aliasType, detectChessFormat, looksLikeFen } from "../src/chess-format";
+import { aliasBlock, aliasType, detectChessFormat, looksLikeFen, srcOption } from "../src/chess-format";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -53,5 +53,42 @@ describe("aliasType", () => {
 	it("goes by the src: file's extension for chess blocks", () => {
 		expect(aliasType("chess", "", "Games/Opera Game.pgn")).toBe("pgn");
 		expect(aliasType("chess", "", "Positions/start.FEN")).toBe("fen");
+	});
+});
+
+describe("srcOption", () => {
+	it("reads a quoted or bare path, keeping its case", () => {
+		expect(srcOption('type:pgn src:"Games/Opera Game.pgn"')).toBe("Games/Opera Game.pgn");
+		expect(srcOption("src:Games/opera.pgn title:x")).toBe("Games/opera.pgn");
+		expect(srcOption("type:pgn")).toBeNull();
+	});
+});
+
+describe("aliasBlock", () => {
+	it("leaves a block alone when its first line has a type:", () => {
+		const source = 'type:pgn src:"Games/opera.pgn"';
+		expect(aliasBlock("chess", "", source)).toEqual({ fenceLine: "", source });
+		expect(aliasBlock("fen", "", source)).toEqual({ fenceLine: "", source });
+	});
+
+	it("leaves a block alone when its fence line has a type:", () => {
+		expect(aliasBlock("pgn", "type:fen", START)).toEqual({ fenceLine: "type:fen", source: START });
+	});
+
+	it("puts the type on a src: header, from the file's extension", () => {
+		expect(aliasBlock("chess", "", 'src:"Games/opera.pgn"')).toEqual({
+			fenceLine: "",
+			source: 'type:pgn src:"Games/opera.pgn"',
+		});
+		expect(aliasBlock("chess", "", "src:Positions/a.fen\n")).toEqual({
+			fenceLine: "",
+			source: "type:fen src:Positions/a.fen\n",
+		});
+	});
+
+	it("puts the type on the fence line otherwise", () => {
+		expect(aliasBlock("chess", "title:x", "1.e4 e5 *")).toEqual({ fenceLine: "type:pgn title:x", source: "1.e4 e5 *" });
+		expect(aliasBlock("chess", "src:Games/a.pgn", "")).toEqual({ fenceLine: "type:pgn src:Games/a.pgn", source: "" });
+		expect(aliasBlock("fen", "", START)).toEqual({ fenceLine: "type:fen", source: START });
 	});
 });

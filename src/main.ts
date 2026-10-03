@@ -1,16 +1,23 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
-import { boardBlockFor, insideCodeBlock } from "./paste-board";
+import { boardBlockFor, editsCodeBlock } from "./paste-board";
+import { findChessBlocks } from "./puzzle-review";
+import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
+import { StaticViewer } from "./static-viewer";
+import { staticFenPosition, staticPgnPosition } from "./static-position";
+import { GamePickerViewer } from "./game-picker";
+import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { parseBoardTheme, resolveBoardTheme } from "./board-themes";
 import { closeSounds } from "./sound";
 import { parseBoardSize, resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
-import { BLOCK_ALIASES, aliasType, looksLikeFen } from "./chess-format";
+import { BLOCK_ALIASES, aliasBlock, looksLikeFen, srcOption } from "./chess-format";
 import type { BlockAlias } from "./chess-format";
 
 // The setting that turns each alias on.
@@ -66,6 +73,12 @@ export default class ChessPlugin extends Plugin {
 		this.addPasteCommand();
 		injectSprites(document);
 
+		this.addCommand({
+			id: "review-vault-puzzles",
+			name: "Review puzzles from the vault",
+			callback: () => void this.reviewVaultPuzzles(),
+		});
+
 		// Lets .pgn / .fen files open in Obsidian's editor, so a src: block can be
 		// edited side by side with the board it renders.
 		try {
@@ -107,18 +120,16 @@ export default class ChessPlugin extends Plugin {
 			const child = new ChessBlockChild(el, (gone) => this.forgetBlock(gone));
 			this.blockChildren.set(el, child);
 			ctx.addChild(child);
-			let fenceLine = this.extractFenceLine(el, ctx, language);
+			const fenceLine = this.extractFenceLine(el, ctx, language);
 			// An alias block is a chessboard block with its type: implied.
-			if (alias && !/type:(fen|pgn)/i.test(fenceLine)) {
-				const type = aliasType(alias, source, this.parseOptions(fenceLine).src);
-				fenceLine = `type:${type} ${fenceLine}`.trim();
-			}
-			void this.processCodeBlock(source, el, fenceLine, ctx.sourcePath);
+			const block = alias ? aliasBlock(alias, fenceLine, source) : { fenceLine, source };
+			void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
 		};
 		try {
 			this.registerMarkdownCodeBlockProcessor(language, handler);
 		} catch (e: unknown) {
-			// Another processor already owns this name; leave it to that one.
+			// Obsidian throws when another plugin loaded first and owns this name;
+			// leave its blocks to it.
 			console.warn(`chess-notebook: could not register ${language} code blocks`, e);
 		}
 	}
@@ -141,9 +152,11 @@ export default class ChessPlugin extends Plugin {
 			id: "paste-as-board",
 			name: "Paste a chess position or game as a board",
 			editorCallback: async (editor: Editor) => {
-				const cursor = editor.getCursor("from");
-				if (insideCodeBlock(editor.getValue().split("\n"), cursor.line)) {
-					new Notice("Place the caret outside the code block first.");
+				const editsBlock = () =>
+					editsCodeBlock(editor.getValue().split("\n"), editor.getCursor("from"), editor.getCursor("to"));
+				const refuse = () => new Notice("Place the caret outside the code block first.");
+				if (editsBlock()) {
+					refuse();
 					return;
 				}
 				let text: string;
@@ -153,6 +166,12 @@ export default class ChessPlugin extends Plugin {
 					new Notice("Could not read the clipboard.");
 					return;
 				}
+				// The note or the selection may have changed while the clipboard was read.
+				if (editsBlock()) {
+					refuse();
+					return;
+				}
+				const cursor = editor.getCursor("from");
 				const block = boardBlockFor(text, editor.getLine(cursor.line).slice(0, cursor.ch).trim().length > 0);
 				if (!block) {
 					new Notice("The clipboard holds no chess position or game.");
@@ -235,12 +254,10 @@ export default class ChessPlugin extends Plugin {
 			// removing size: from a block puts it back to the default.
 			el.setCssProps({ "--sfb-board-size": `${resolveBoardSize(parsed.options.size, this.settings.boardSize)}px` });
 
-			if (parsed.type === "fen") {
-				const fens = content
-					.split("\n")
-					.map((l) => l.trim())
-					.filter((l) => l.length > 0 && looksLikeFen(l))
-					.map((l) => normalizeFen(l));
+			if (parsed.options.diagram) {
+				child.setViewer(this.createStaticViewer(el, parsed.type, content, parsed.options));
+			} else if (parsed.type === "fen") {
+				const fens = this.parseFens(content);
 
 				if (fens.length > 1) {
 					child.setViewer(new FenSequenceViewer(el, fens, parsed.options, this.settings));
@@ -248,13 +265,41 @@ export default class ChessPlugin extends Plugin {
 					child.setViewer(new FenViewer(el, fens[0] ?? normalizeFen(content.trim()), parsed.options, this.settings));
 				}
 			} else {
-				child.setViewer(new PgnViewer(el, content, parsed.options, this.settings));
+				const games = splitPgnGames(content);
+				if (games.length > 1) {
+					child.setViewer(new GamePickerViewer(el, games, parsed.options, this.settings));
+				} else {
+					child.setViewer(new PgnViewer(el, content, parsed.options, this.settings));
+				}
 			}
 		} catch (e: unknown) {
 			const msg = e instanceof Error ? e.message : "Unknown error rendering chessboard";
 			this.clearBlock(el);
 			el.createDiv({ cls: "sfb-chess-error", text: "Chessboard error: " + msg });
 		}
+	}
+
+	private createStaticViewer(
+		el: HTMLElement,
+		type: "fen" | "pgn",
+		content: string,
+		options: CodeBlockOptions,
+	): StaticViewer {
+		if (type === "pgn") {
+			const { fen, shapes } = staticPgnPosition(content, options.startAt);
+			return new StaticViewer(el, fen, shapes, options, this.settings);
+		}
+		const fens = this.parseFens(content);
+		const fen = fens.length > 0 ? staticFenPosition(fens, options.startAt) : normalizeFen(content.trim());
+		return new StaticViewer(el, fen, { arrows: [], squares: [] }, options, this.settings);
+	}
+
+	private parseFens(content: string): string[] {
+		return content
+			.split("\n")
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0 && looksLikeFen(l))
+			.map((l) => normalizeFen(l));
 	}
 
 	// Destroys the block's current viewer before its DOM is replaced.
@@ -336,15 +381,58 @@ export default class ChessPlugin extends Plugin {
 		}
 	}
 
+	// Gathers every mode:puzzle block in the vault and serves them in a modal.
+	private async reviewVaultPuzzles(): Promise<void> {
+		const puzzles = await this.collectPuzzles();
+		if (puzzles.length === 0) {
+			new Notice("No mode:puzzle chessboard blocks found in the vault.");
+			return;
+		}
+		new PuzzleReviewModal(this.app, puzzles, this.settings, (puzzle) => {
+			const file = this.app.vault.getAbstractFileByPath(puzzle.path);
+			if (file instanceof TFile) {
+				void this.app.workspace.getLeaf(false).openFile(file, { eState: { line: puzzle.line } });
+			}
+		}).open();
+	}
+
+	// Reads each note and keeps the PGN blocks whose options (parsed the same
+	// way a rendered block's are) say mode:puzzle. A src: block reads its file.
+	private async collectPuzzles(): Promise<ReviewPuzzle[]> {
+		const puzzles: ReviewPuzzle[] = [];
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			const text = await this.app.vault.cachedRead(file);
+			if (!text.toLowerCase().includes("chessboard")) continue;
+			for (const block of findChessBlocks(text)) {
+				const parsed = this.parseCodeBlock(block.source, block.fenceLine);
+				if (!parsed || parsed.type !== "pgn" || parsed.options.mode !== "puzzle") continue;
+				let pgn = parsed.content;
+				if (parsed.options.src) {
+					try {
+						pgn = await this.readChessFile(this.resolveSrcPath(parsed.options.src, file.path));
+					} catch {
+						continue;
+					}
+				}
+				puzzles.push({ path: file.path, line: block.line, pgn, options: parsed.options });
+			}
+		}
+		return puzzles;
+	}
+
 	private parseOptions(line: string): CodeBlockOptions {
 		const opts: CodeBlockOptions = {
 			center: true,
 			mode: "normal",
 			startAt: "start",
 			flipped: false,
+			diagram: false,
 			color: null,
 			notation: "san",
 			pieces: null,
+			arrows: null,
+			squares: null,
+			board: null,
 			size: null,
 			title: null,
 			white: null,
@@ -356,16 +444,23 @@ export default class ChessPlugin extends Plugin {
 			eco: null,
 			result: null,
 			src: null,
+			game: null,
 		};
 
-		const srcMatch = /src:(?:"([^"]+)"|(\S+))/i.exec(line);
-		if (srcMatch) {
-			opts.src = srcMatch[1] ?? srcMatch[2];
+		opts.src = srcOption(line);
+
+		const gameMatch = /game:(?:"([^"]+)"|(\d+))/i.exec(line);
+		if (gameMatch) {
+			opts.game = gameMatch[1] ?? parseInt(gameMatch[2]);
 		}
 
 		const boolMatch = /center:(true|false)/i.exec(line);
 		if (boolMatch && boolMatch[1].toLowerCase() === "false") {
 			opts.center = false;
+		}
+
+		if (/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i.test(line)) {
+			opts.diagram = true;
 		}
 
 		const flippedMatch = /flipped:(true|false)/i.exec(line);
@@ -394,6 +489,21 @@ export default class ChessPlugin extends Plugin {
 		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
 		if (piecesMatch) {
 			opts.pieces = piecesMatch[1].toLowerCase();
+		}
+
+		const arrowsMatch = /(?:^|\s)arrows:(?:"([^"]*)"|(\S+))/i.exec(line);
+		if (arrowsMatch) {
+			opts.arrows = arrowsMatch[1] ?? arrowsMatch[2];
+		}
+
+		const squaresMatch = /(?:^|\s)squares:(?:"([^"]*)"|(\S+))/i.exec(line);
+		if (squaresMatch) {
+			opts.squares = squaresMatch[1] ?? squaresMatch[2];
+		}
+
+		const boardMatch = /(?:^|\s)board:([\w-]+)/i.exec(line);
+		if (boardMatch) {
+			opts.board = parseBoardTheme(boardMatch[1]);
 		}
 
 		const sizeMatch = /\bsize:(\w+)/i.exec(line);
@@ -439,11 +549,14 @@ export default class ChessPlugin extends Plugin {
 		const fenceLower = fenceLine.toLowerCase();
 
 		const lines = source.split("\n");
-		const firstLine = lines[0].trim().toLowerCase();
+		const header = lines[0].trim();
+		const firstLine = header.toLowerCase();
 
+		// Options are read from the header as written, so a src: path or a
+		// title keeps its case.
 		if (fenceLower.includes("type:fen") || firstLine.includes("type:fen")) {
 			const contentLines = firstLine.includes("type:fen") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:fen") ? this.parseOptions(firstLine) : null;
+			const firstLineOpts = firstLine.includes("type:fen") ? this.parseOptions(header) : null;
 			return {
 				type: "fen",
 				content: contentLines.join("\n"),
@@ -453,7 +566,7 @@ export default class ChessPlugin extends Plugin {
 
 		if (fenceLower.includes("type:pgn") || firstLine.includes("type:pgn")) {
 			const contentLines = firstLine.includes("type:pgn") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:pgn") ? this.parseOptions(firstLine) : null;
+			const firstLineOpts = firstLine.includes("type:pgn") ? this.parseOptions(header) : null;
 			return {
 				type: "pgn",
 				content: contentLines.join("\n"),
@@ -488,9 +601,13 @@ export default class ChessPlugin extends Plugin {
 			mode: inline.mode !== "normal" ? inline.mode : fence.mode,
 			startAt: inline.startAt !== "start" ? inline.startAt : fence.startAt,
 			flipped: inline.flipped || fence.flipped,
+			diagram: inline.diagram || fence.diagram,
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,
+			arrows: inline.arrows ?? fence.arrows,
+			squares: inline.squares ?? fence.squares,
+			board: inline.board ?? fence.board,
 			size: inline.size ?? fence.size,
 			title: inline.title ?? fence.title,
 			white: inline.white ?? fence.white,
@@ -502,6 +619,7 @@ export default class ChessPlugin extends Plugin {
 			eco: inline.eco ?? fence.eco,
 			result: inline.result ?? fence.result,
 			src: inline.src ?? fence.src,
+			game: inline.game ?? fence.game,
 		};
 	}
 
@@ -510,6 +628,8 @@ export default class ChessPlugin extends Plugin {
 		this.settings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
 		// Earlier versions read sets from the plugin folder; unknown names fall back.
 		this.settings.fanPieceSet = resolvePieceSet(this.settings.fanPieceSet);
+		// Earlier versions kept the board's CSS class here, which was always green.
+		this.settings.boardTheme = resolveBoardTheme(null, this.settings.boardTheme);
 	}
 
 	async saveSettings(): Promise<void> {

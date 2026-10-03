@@ -33,6 +33,7 @@ import {
 import type { LegalTarget } from "./legal-moves";
 import type { ChessSettings } from "./types";
 import type { BoardShapes } from "./pgn-parser";
+import { boardThemeClass, resolveBoardTheme } from "./board-themes";
 
 interface MoveInputEvent {
 	type: string;
@@ -156,8 +157,10 @@ export class BoardManager {
 		fen: string,
 		settings: ChessSettings,
 		pieceSetName?: string,
+		boardTheme?: string | null,
 	) {
 		this.container = container;
+		container.addClass(boardThemeClass(resolveBoardTheme(boardTheme ?? null, settings.boardTheme)));
 		// The standard set is the sprite the board already draws.
 		this.pieceSetName = pieceSetName && getPieceSet(pieceSetName) ? pieceSetName : null;
 		injectSprites(container.doc);
@@ -169,7 +172,7 @@ export class BoardManager {
 			assetsCache: true,
 			assetsUrl: "",
 			style: {
-				cssClass: settings.boardTheme,
+				cssClass: "sfb-chess",
 				showCoordinates: settings.showCoordinates,
 				borderType: BORDER_TYPE.none,
 				aspectRatio: 1,
@@ -267,10 +270,10 @@ export class BoardManager {
 		this.board.removeMarkers(LAST_MOVE_DARK);
 	}
 
-	flip(): void {
+	flip(animated: boolean = true): void {
 		const current = this.board.getOrientation();
 		const next = current === COLOR.white ? COLOR.black : COLOR.white;
-		void this.board.setOrientation(next, true).then(() => this.replacePieces());
+		void this.board.setOrientation(next, animated).then(() => this.replacePieces());
 	}
 
 	getOrientation(): string {
