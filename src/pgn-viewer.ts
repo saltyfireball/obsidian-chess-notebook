@@ -146,7 +146,7 @@ export class PgnViewer {
 	): void {
 		this.pieceSetReady = this.notation === "fan";
 		this.evalClock = EvalClockView.create(boardWrapper, this.mainlineMoves, this.headers);
-		this.boardManager = new BoardManager(boardWrapper, this.startingFen, settings, this.pieceSetName);
+		this.boardManager = new BoardManager(boardWrapper, this.startingFen, settings, this.pieceSetName, options.board);
 		this.drawBadge = boardWrapper.createDiv({ cls: "sfb-chess-draw-badge" });
 		this.updateDrawBadge(this.startingFen, 1);
 		if (options.flipped) {

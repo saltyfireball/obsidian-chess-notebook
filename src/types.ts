@@ -1,6 +1,7 @@
 import type { ArrowType, MarkerType } from "cm-chessboard/src/Chessboard.js";
 
 export interface ChessSettings {
+	// A board colour theme from board-themes.ts.
 	boardTheme: string;
 	showCoordinates: boolean;
 	animationDuration: number;
@@ -18,7 +19,7 @@ export interface ChessSettings {
 }
 
 export const DEFAULT_SETTINGS: ChessSettings = {
-	boardTheme: "sfb-chess",
+	boardTheme: "green",
 	showCoordinates: true,
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
@@ -50,6 +51,8 @@ export interface CodeBlockOptions {
 	color: "w" | "b" | null;
 	notation: Notation;
 	pieces: string | null;
+	// A board colour theme; null: the one in the settings.
+	board: string | null;
 	// Board width in pixels from size:; null: the settings default.
 	size: number | null;
 	title: string | null;

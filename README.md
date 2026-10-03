@@ -195,6 +195,18 @@ Pick a default piece set in the settings, or set one per block with `pieces:name
 ```
 ````
 
+### Board colours
+
+Pick a default board theme in the settings, or set one per block with `board:name`: `green` (default), `brown`, `blue`, `wood`, `grey` (`gray` works too).
+
+![The same position on the green, brown, blue, wood and grey boards](docs/media/board-themes.png)
+
+````markdown
+```chessboard type:fen board:brown
+r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
+```
+````
+
 ### Light and dark themes
 
 Boards follow Obsidian's theme.
@@ -216,6 +228,7 @@ The settings tab has a How to use page, a quick reference for blocks, header tag
 
 - **Board size**: the default board width, small, medium or large. Override it per block with `size:`.
 - **Auto-play speed**: time between moves during auto-play.
+- **Board theme**: the default board colours. Override it per block with `board:name`.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 - **Move sounds** and **Sound volume**: a tone for each move and capture (off by default).
 - **Announce moves**: read each move out to screen readers (off by default).
@@ -240,6 +253,7 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
+| `board:green\|brown\|blue\|wood\|grey` | Board colours for this block (default: the one in the settings) |
 | `size:small\|medium\|large\|N` | Board width: `small` (300px), `medium` (420px), `large` (560px), or `N` pixels, e.g. `size:360` (default: the Board size setting) |
 | `start_at:start\|end\|N` | Initial position: the start, the end, or index N (see below) |
 | `src:path` | Read the FEN or PGN from a file in the vault, e.g. `src:"Games/Opera Game.pgn"` |

@@ -8,6 +8,7 @@ import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { parseBoardTheme, resolveBoardTheme } from "./board-themes";
 import { closeSounds } from "./sound";
 import { parseBoardSize, resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
@@ -352,6 +353,7 @@ export default class ChessPlugin extends Plugin {
 			color: null,
 			notation: "san",
 			pieces: null,
+			board: null,
 			size: null,
 			title: null,
 			white: null,
@@ -407,6 +409,11 @@ export default class ChessPlugin extends Plugin {
 		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
 		if (piecesMatch) {
 			opts.pieces = piecesMatch[1].toLowerCase();
+		}
+
+		const boardMatch = /(?:^|\s)board:([\w-]+)/i.exec(line);
+		if (boardMatch) {
+			opts.board = parseBoardTheme(boardMatch[1]);
 		}
 
 		const sizeMatch = /\bsize:(\w+)/i.exec(line);
@@ -504,6 +511,7 @@ export default class ChessPlugin extends Plugin {
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,
+			board: inline.board ?? fence.board,
 			size: inline.size ?? fence.size,
 			title: inline.title ?? fence.title,
 			white: inline.white ?? fence.white,
@@ -524,6 +532,8 @@ export default class ChessPlugin extends Plugin {
 		this.settings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
 		// Earlier versions read sets from the plugin folder; unknown names fall back.
 		this.settings.fanPieceSet = resolvePieceSet(this.settings.fanPieceSet);
+		// Earlier versions kept the board's CSS class here, which was always green.
+		this.settings.boardTheme = resolveBoardTheme(null, this.settings.boardTheme);
 	}
 
 	async saveSettings(): Promise<void> {
