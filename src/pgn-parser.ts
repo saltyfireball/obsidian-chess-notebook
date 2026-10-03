@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { NAG_CODE_MAP, UNICODE_NAG_REGEX, UNICODE_NAG_MAP } from "./nag-data";
 import { normalizeFen } from "./types";
+import { extractEvalClock, type Evaluation } from "./eval-clock";
 
 export interface MoveNode {
 	san: string;
@@ -13,6 +14,10 @@ export interface MoveNode {
 	nag: string | null;
 	variations: MoveNode[][];
 	shapes: BoardShapes;
+	// From [%eval] and [%clk] in the comment: the eval after this move and
+	// the mover's clock in seconds.
+	evaluation: Evaluation | null;
+	clock: number | null;
 }
 
 export type ShapeColor = "G" | "R" | "Y" | "B";
@@ -336,6 +341,8 @@ function parseMoveSequence(
 					nag: null,
 					variations: [],
 					shapes: { arrows: [], squares: [] },
+					evaluation: null,
+					clock: null,
 				});
 			} catch {
 				// Invalid move - skip
@@ -409,6 +416,48 @@ export function extractShapes(comment: string | null): { text: string | null; sh
 	return { text: text.length > 0 ? text : null, shapes };
 }
 
+const OPTION_ARROW_REGEX = /^([GRYB])?([a-h][1-8])([a-h][1-8])$/i;
+const OPTION_SQUARE_REGEX = /^([GRYB])?([a-h][1-8])$/i;
+const COLOR_NAMES: Record<string, ShapeColor> = {
+	g: "G", green: "G",
+	r: "R", red: "R",
+	y: "Y", yellow: "Y",
+	b: "B", blue: "B",
+};
+
+// One entry of an arrows:/squares: option: the [%cal]/[%csl] form with the
+// colour letter optional (green when left out), or the colour after a colon,
+// e.g. Rf7, f7, f7:red. Null for anything else.
+function parseOptionEntry(entry: string, regex: RegExp): { color: ShapeColor; squares: string[] } | null {
+	const [body, colorName, extra] = entry.split(":");
+	if (extra !== undefined) return null;
+	const m = regex.exec(body);
+	if (!m) return null;
+	const suffix = colorName === undefined ? undefined : COLOR_NAMES[colorName.toLowerCase()];
+	if (colorName !== undefined && (!suffix || m[1])) return null;
+	const color = suffix ?? (m[1] ? (m[1].toUpperCase() as ShapeColor) : "G");
+	return { color, squares: m.slice(2).map((s) => s.toLowerCase()) };
+}
+
+// The drawings from a FEN block's arrows:"e2e4,Rd8d1" and squares:"d5,Rf7"
+// options, in the same shape as a comment's [%cal]/[%csl]. Entries are split
+// on commas or spaces; ones that do not parse are skipped.
+export function parseShapeOptions(arrows: string | null, squares: string | null): BoardShapes {
+	const shapes: BoardShapes = { arrows: [], squares: [] };
+	const entries = (value: string | null) => (value ?? "").split(/[\s,]+/).filter((e) => e.length > 0);
+	for (const entry of entries(arrows)) {
+		const parsed = parseOptionEntry(entry, OPTION_ARROW_REGEX);
+		if (parsed && parsed.squares[0] !== parsed.squares[1]) {
+			shapes.arrows.push({ from: parsed.squares[0], to: parsed.squares[1], color: parsed.color });
+		}
+	}
+	for (const entry of entries(squares)) {
+		const parsed = parseOptionEntry(entry, OPTION_SQUARE_REGEX);
+		if (parsed) shapes.squares.push({ square: parsed.squares[0], color: parsed.color });
+	}
+	return shapes;
+}
+
 // A move whose comment was only [%cal]/[%csl] drawings: nothing shows in the
 // move list, but stepping to it draws on the board.
 export function hasDrawingsOnly(node: MoveNode): boolean {
@@ -417,9 +466,12 @@ export function hasDrawingsOnly(node: MoveNode): boolean {
 
 function applyShapes(moves: MoveNode[]): void {
 	for (const move of moves) {
-		const { text, shapes } = extractShapes(move.comment);
+		const { text: rest, evaluation, clock } = extractEvalClock(move.comment);
+		const { text, shapes } = extractShapes(rest);
 		move.comment = text;
 		move.shapes = shapes;
+		move.evaluation = evaluation;
+		move.clock = clock;
 		for (const variation of move.variations) applyShapes(variation);
 	}
 }
@@ -434,7 +486,7 @@ export function parsePgn(pgn: string): ParsedPgn {
 	const pos = { idx: 0 };
 	const { moves, startingComment: rawStartingComment } = parseMoveSequence(tokens, pos, chess);
 	applyShapes(moves);
-	const { text: startingComment, shapes: startingShapes } = extractShapes(rawStartingComment);
+	const { text: startingComment, shapes: startingShapes } = extractShapes(extractEvalClock(rawStartingComment).text);
 
 	let result: string | null = null;
 	for (const token of tokens) {
