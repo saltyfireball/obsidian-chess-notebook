@@ -240,11 +240,11 @@ export class FenSequenceViewer {
 			cls: "sfb-chess-btn",
 			attr: { "aria-label": label },
 		});
-		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		const svg = createSvg("svg");
 		svg.setAttribute("viewBox", "0 0 24 24");
 		svg.setAttribute("width", "18");
 		svg.setAttribute("height", "18");
-		const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+		const path = createSvg("path");
 		path.setAttribute("fill", "currentColor");
 		path.setAttribute("d", iconPath);
 		svg.appendChild(path);

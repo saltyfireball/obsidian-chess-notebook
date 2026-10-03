@@ -162,8 +162,8 @@
 }
 
 .sfb-chess-center-wrapper > .sfb-chess-container {
-    margin-left: auto !important;
-    margin-right: auto !important;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* FEN viewer: just the board */
@@ -411,7 +411,7 @@
     }
 
     .sfb-chess-board-column {
-        width: 100% !important;
+        width: 100%;
     }
 
     .sfb-chess-sidebar {
@@ -446,6 +446,11 @@
     font-size: 12px;
 }
 
+/* The quick reference fills a whole settings row on Obsidian 1.13 and later. */
+.setting-item.sfb-chess-settings-reference {
+    display: block;
+}
+
 .sfb-chess-settings-usage pre {
     margin: 8px 0;
 }
@@ -464,24 +469,24 @@
     position: relative;
 }
 
-.sfb-chess-toggle-active {
-    background: rgba(255, 170, 0, 0.85) !important;
-    color: #000 !important;
+.sfb-chess-btn.sfb-chess-toggle-active {
+    background: rgba(255, 170, 0, 0.85);
+    color: #000;
 }
 
-.sfb-chess-toggle-active:hover {
-    background: rgba(255, 170, 0, 1) !important;
-    color: #000 !important;
+.sfb-chess-btn.sfb-chess-toggle-active:hover {
+    background: rgba(255, 170, 0, 1);
+    color: #000;
 }
 
-.sfb-chess-toggle-active-strong {
-    background: rgba(100, 190, 220, 0.85) !important;
-    color: #000 !important;
+.sfb-chess-btn.sfb-chess-toggle-active-strong {
+    background: rgba(100, 190, 220, 0.85);
+    color: #000;
 }
 
-.sfb-chess-toggle-active-strong:hover {
-    background: rgba(100, 190, 220, 1) !important;
-    color: #000 !important;
+.sfb-chess-btn.sfb-chess-toggle-active-strong:hover {
+    background: rgba(100, 190, 220, 1);
+    color: #000;
 }
 
 .sfb-chess-btn-hidden {
@@ -496,8 +501,8 @@
     margin: 0 4px;
 }
 
-.sfb-chess-btn-copied {
-    color: #A9DC76 !important;
+.sfb-chess-btn.sfb-chess-btn-copied {
+    color: #A9DC76;
 }
 
 /* ============================================================

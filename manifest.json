@@ -1,7 +1,7 @@
 {
 	"id": "chess-notebook",
 	"name": "Chess Notebook",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.1.0",
 	"description": "Interactive chessboards from FEN and PGN code blocks, with puzzle and step modes.",
 	"author": "saltyfireball",

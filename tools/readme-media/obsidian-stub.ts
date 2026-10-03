@@ -130,7 +130,6 @@ export class PluginSettingTab {
 	}
 	display(): void {}
 }
-
 // The settings rows, shaped like Obsidian's .setting-item markup.
 export class Setting {
 	settingEl: HTMLElement;

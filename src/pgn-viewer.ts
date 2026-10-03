@@ -50,7 +50,7 @@ export class PgnViewer {
 	private pieceSetReady = false;
 
 	private autoPlaying = false;
-	private autoPlayTimer: ReturnType<typeof setTimeout> | null = null;
+	private autoPlayTimer: number | null = null;
 	private autoPlaySpeed: number;
 	private timers = new Set<number>();
 
@@ -496,11 +496,11 @@ export class PgnViewer {
 
 	private createNavButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {
 		const btn = parent.createEl("button", { cls: "sfb-chess-btn", attr: { "aria-label": label } });
-		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		const svg = createSvg("svg");
 		svg.setAttribute("viewBox", "0 0 24 24");
 		svg.setAttribute("width", "18");
 		svg.setAttribute("height", "18");
-		const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+		const path = createSvg("path");
 		path.setAttribute("fill", "currentColor");
 		path.setAttribute("d", iconPath);
 		svg.appendChild(path);
@@ -511,7 +511,7 @@ export class PgnViewer {
 
 	private createStrokeToggleButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {
 		const btn = parent.createEl("button", { cls: "sfb-chess-btn sfb-chess-toggle-btn", attr: { "aria-label": label } });
-		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		const svg = createSvg("svg");
 		svg.setAttribute("viewBox", "0 0 24 24");
 		svg.setAttribute("width", "18");
 		svg.setAttribute("height", "18");
@@ -520,7 +520,7 @@ export class PgnViewer {
 		svg.setAttribute("stroke-width", "2");
 		svg.setAttribute("stroke-linecap", "round");
 		svg.setAttribute("stroke-linejoin", "round");
-		const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+		const path = createSvg("path");
 		path.setAttribute("d", iconPath);
 		svg.appendChild(path);
 		btn.appendChild(svg);
@@ -530,11 +530,11 @@ export class PgnViewer {
 
 	private createToggleButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {
 		const btn = parent.createEl("button", { cls: "sfb-chess-btn sfb-chess-toggle-btn", attr: { "aria-label": label } });
-		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		const svg = createSvg("svg");
 		svg.setAttribute("viewBox", "0 0 24 24");
 		svg.setAttribute("width", "18");
 		svg.setAttribute("height", "18");
-		const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+		const path = createSvg("path");
 		path.setAttribute("fill", "currentColor");
 		path.setAttribute("d", iconPath);
 		svg.appendChild(path);
@@ -565,7 +565,7 @@ export class PgnViewer {
 		if (!this.autoPlaying) return;
 		this.autoPlaying = false;
 		if (this.autoPlayTimer !== null) {
-			clearTimeout(this.autoPlayTimer);
+			window.clearTimeout(this.autoPlayTimer);
 			this.autoPlayTimer = null;
 		}
 		this.updateAutoPlayIcon();
@@ -574,7 +574,7 @@ export class PgnViewer {
 
 	private scheduleAutoPlayStep(): void {
 		if (!this.autoPlaying) return;
-		this.autoPlayTimer = setTimeout(() => {
+		this.autoPlayTimer = window.setTimeout(() => {
 			this.autoPlayTimer = null;
 			if (!this.autoPlaying) return;
 
@@ -753,7 +753,7 @@ export class PgnViewer {
 		const children = row.childNodes;
 		for (let c = 0; c < children.length; c++) {
 			const child = children[c];
-			if (child instanceof HTMLElement && child.hasClass("sfb-chess-move") && !child.hasClass("sfb-chess-move-spacer")) {
+			if (child.instanceOf(HTMLElement) && child.hasClass("sfb-chess-move") && !child.hasClass("sfb-chess-move-spacer")) {
 				movesInRow.push(child);
 			}
 		}
@@ -765,7 +765,7 @@ export class PgnViewer {
 			const spacers: HTMLElement[] = [];
 			for (let c = 0; c < children.length; c++) {
 				const child = children[c];
-				if (child instanceof HTMLElement && child.hasClass("sfb-chess-move-spacer")) {
+				if (child.instanceOf(HTMLElement) && child.hasClass("sfb-chess-move-spacer")) {
 					spacers.push(child);
 				}
 			}
