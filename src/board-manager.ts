@@ -10,7 +10,8 @@ import { Markers } from "cm-chessboard/src/extensions/markers/Markers.js";
 import { Arrows } from "cm-chessboard/src/extensions/arrows/Arrows.js";
 import { Svg } from "cm-chessboard/src/lib/Svg.js";
 import { Extension, EXTENSION_POINT } from "cm-chessboard/src/model/Extension.js";
-import { squareLabel } from "./speech";
+import { boardAria, layerAria, squareAria } from "./speech";
+import type { AriaAttrs } from "./speech";
 import { PIECES_SVG, MARKERS_SVG, ARROWS_SVG, DEFS_SVG } from "./sprites";
 import { checkedKingSquare } from "./check";
 import { arrowMarkerId } from "./arrow-id";
@@ -104,12 +105,24 @@ class BoardArrows extends Arrows {
 	}
 }
 
+function setAria(el: Element, attrs: AriaAttrs): void {
+	for (const [name, value] of Object.entries(attrs)) {
+		if (value === null) el.removeAttribute(name);
+		else el.setAttribute(name, value);
+	}
+}
+
 // The stock board is one role="img" SVG, so screen readers see nothing on it.
-// This makes it a group and labels each square with what stands on it, e.g.
-// "e4, white knight", after every redraw and position change.
+// With the Square labels setting on, this makes it a group and labels each
+// square with what stands on it, e.g. "e4, white knight", after every redraw
+// and position change. The setting is read each time, so turning it on or off
+// reaches an open board on its next move or redraw.
 class SquareLabels extends Extension {
-	constructor(chessboard: unknown) {
+	private settings: ChessSettings;
+
+	constructor(chessboard: unknown, props: { settings: ChessSettings }) {
 		super(chessboard);
+		this.settings = props.settings;
 		this.registerExtensionPoint(EXTENSION_POINT.afterRedrawBoard, () => this.label());
 		this.registerExtensionPoint(EXTENSION_POINT.positionChanged, () => this.label());
 	}
@@ -117,15 +130,14 @@ class SquareLabels extends Extension {
 	private label(): void {
 		const svg = this.chessboard.view.svg;
 		if (!svg) return;
-		svg.setAttribute("role", "group");
-		svg.setAttribute("aria-label", "Chessboard");
+		const on = this.settings.squareLabels;
+		setAria(svg, boardAria(on));
 		for (const layer of Array.from(svg.querySelectorAll(".pieces-layer, .markers-layer, .markers-top-layer"))) {
-			layer.setAttribute("aria-hidden", "true");
+			setAria(layer, layerAria(on));
 		}
 		for (const rect of Array.from(svg.querySelectorAll("rect[data-square]"))) {
 			const square = rect.getAttribute("data-square") ?? "";
-			rect.setAttribute("role", "img");
-			rect.setAttribute("aria-label", squareLabel(square, this.chessboard.getPiece(square)));
+			setAria(rect, squareAria(on, square, on ? this.chessboard.getPiece(square) : null));
 		}
 	}
 }
@@ -174,7 +186,7 @@ export class BoardManager {
 				},
 				{
 					class: SquareLabels,
-					props: {},
+					props: { settings },
 				},
 			],
 		});

@@ -9,6 +9,7 @@ export interface ChessSettings {
 	moveSounds: boolean;
 	soundVolume: number;
 	announceMoves: boolean;
+	squareLabels: boolean;
 	// Also render chess, pgn and fen code blocks. Read once at load.
 	chessBlocks: boolean;
 	pgnBlocks: boolean;
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	moveSounds: false,
 	soundVolume: 50,
 	announceMoves: false,
+	squareLabels: false,
 	chessBlocks: true,
 	pgnBlocks: true,
 	fenBlocks: true,
