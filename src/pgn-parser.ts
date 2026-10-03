@@ -321,7 +321,7 @@ function parseMoveSequence(
 					fen: result.after,
 					from: result.from,
 					to: result.to,
-					color: result.color as "w" | "b",
+					color: result.color,
 					moveNumber: moveNum,
 					comment: null,
 					nag: null,

@@ -38,15 +38,11 @@ function injectSprite(doc: Document, id: string, svgContent: string): void {
 	if (doc.getElementById(id)) {
 		return;
 	}
-	const wrapper = doc.createElement("div");
-	wrapper.addClass("sfb-chess-sprite-cache");
-	wrapper.setAttribute("aria-hidden", "true");
-	wrapper.id = id;
 	const parser = new DOMParser();
 	const parsed = parser.parseFromString(svgContent, "image/svg+xml");
 	const svg = parsed.documentElement;
+	const wrapper = doc.body.createDiv({ cls: "sfb-chess-sprite-cache", attr: { id, "aria-hidden": "true" } });
 	wrapper.appendChild(doc.importNode(svg, true));
-	doc.body.appendChild(wrapper);
 }
 
 export function injectSprites(doc: Document): void {

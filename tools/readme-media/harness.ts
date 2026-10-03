@@ -50,6 +50,14 @@ function installDomHelpers(): void {
 	N.createSpan = function (this: HTMLElement, o?: ElOpts | string, cb?: (el: HTMLElement) => void) {
 		return create.call(this, "span", o, cb);
 	};
+	(window as unknown as Record<string, unknown>).createSvg = function (tag: string, o?: ElOpts | string) {
+		const el = document.createElementNS("http://www.w3.org/2000/svg", tag) as unknown as HTMLElement;
+		applyOpts(el, o);
+		return el;
+	};
+	N.instanceOf = function (this: Node, type: new () => unknown) {
+		return this instanceof type;
+	};
 	N.empty = function (this: Node) {
 		while (this.firstChild) this.removeChild(this.firstChild);
 	};

@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-chess-notebook",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Interactive chessboards from FEN and PGN code blocks.",
 	"main": "main.js",
 	"type": "module",
@@ -25,8 +25,8 @@
 		"@typescript-eslint/parser": "8.57.2",
 		"esbuild": "0.28.2",
 		"eslint": "9.39.4",
-		"eslint-plugin-obsidianmd": "0.1.9",
-		"obsidian": "1.12.3",
+		"eslint-plugin-obsidianmd": "0.4.2",
+		"obsidian": "1.13.1",
 		"tslib": "2.4.0",
 		"typescript": "5.9.3",
 		"vitest": "5.0.3"
