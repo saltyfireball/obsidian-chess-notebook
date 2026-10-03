@@ -271,6 +271,7 @@
     }
 
     /* Printers drop background colours by default; keep the squares. */
+    .sfb-chess-static,
     .sfb-chess-static .cm-chessboard {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -718,6 +719,14 @@
 .sfb-chess-moves.sfb-chess-moves-paused {
     opacity: 0.45;
     pointer-events: none;
+}
+
+/* The game's comment, eval and clocks describe the game's position, not the
+   explored one, so they step aside while exploring. */
+.sfb-chess-moves-paused .sfb-chess-comment-active,
+.sfb-chess-exploring .sfb-chess-eval-bar,
+.sfb-chess-exploring .sfb-chess-clock {
+    visibility: hidden;
 }
 
 .sfb-chess-explore-bar {

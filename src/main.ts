@@ -7,6 +7,7 @@ import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
 import { StaticViewer } from "./static-viewer";
 import { staticFenPosition, staticPgnPosition } from "./static-position";
+import { parseShapeOptions } from "./pgn-parser";
 import { GamePickerViewer } from "./game-picker";
 import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
@@ -285,7 +286,7 @@ export default class ChessPlugin extends Plugin {
 		}
 		const fens = this.parseFens(content);
 		const fen = fens.length > 0 ? staticFenPosition(fens, options.startAt) : normalizeFen(content.trim());
-		return new StaticViewer(el, fen, { arrows: [], squares: [] }, options, this.settings);
+		return new StaticViewer(el, fen, parseShapeOptions(options.arrows, options.squares), options, this.settings);
 	}
 
 	private parseFens(content: string): string[] {
@@ -421,6 +422,7 @@ export default class ChessPlugin extends Plugin {
 			startAt: "start",
 			flipped: false,
 			diagram: false,
+			explore: true,
 			color: null,
 			notation: "san",
 			pieces: null,
@@ -458,6 +460,10 @@ export default class ChessPlugin extends Plugin {
 
 		if (/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i.test(line)) {
 			opts.diagram = true;
+		}
+
+		if (/(?:^|\s)explore:false(?:\s|$)/i.test(line)) {
+			opts.explore = false;
 		}
 
 		const flippedMatch = /flipped:(true|false)/i.exec(line);
@@ -596,6 +602,7 @@ export default class ChessPlugin extends Plugin {
 			startAt: inline.startAt !== "start" ? inline.startAt : fence.startAt,
 			flipped: inline.flipped || fence.flipped,
 			diagram: inline.diagram || fence.diagram,
+			explore: inline.explore && fence.explore,
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,

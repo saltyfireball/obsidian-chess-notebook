@@ -64,6 +64,45 @@ describe("ExploreLine", () => {
 		expect(line.sanList()).toBe("");
 	});
 
+	it("castles by dragging the king two squares", () => {
+		const line = new ExploreLine("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
+		expect(line.isLegal("e1", "g1")).toBe(true);
+		expect(line.push("e1", "g1")?.san).toBe("O-O");
+		expect(line.push("e8", "c8")?.san).toBe("O-O-O");
+		expect(line.fen.split(" ")[0]).toBe("2kr3r/8/8/8/8/8/8/R4RK1");
+	});
+
+	it("takes en passant and removes the captured pawn", () => {
+		const line = new ExploreLine("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2");
+		expect(line.push("e5", "d6")?.san).toBe("exd6");
+		expect(line.fen.split(" ")[0]).toBe("4k3/8/3P4/8/8/8/8/4K3");
+	});
+
+	it("promotes a black pawn to a queen", () => {
+		const line = new ExploreLine("4k3/8/8/8/8/8/3p4/K7 b - - 0 1");
+		const move = line.push("d2", "d1");
+		expect(move?.san).toBe("d1=Q+");
+		expect(line.sanList()).toBe("1...d1=Q+");
+	});
+
+	it("allows no move once the game is over", () => {
+		// Black is mated: the king can be picked up but has nowhere to go.
+		const mate = new ExploreLine("R5k1/5ppp/8/8/8/8/8/6K1 b - - 1 1");
+		expect(mate.hasOwnPiece("g8")).toBe(true);
+		expect(mate.isLegal("g8", "h8")).toBe(false);
+		expect(mate.push("f7", "f6")).toBeNull();
+		const stalemate = new ExploreLine("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1");
+		expect(stalemate.isLegal("h8", "g8")).toBe(false);
+		expect(stalemate.isLegal("h8", "h7")).toBe(false);
+	});
+
+	it("only allows moves that get out of check", () => {
+		const line = new ExploreLine("4k3/8/8/8/8/8/3PP3/r3K3 w - - 0 1");
+		expect(line.isLegal("e2", "e4")).toBe(false);
+		expect(line.isLegal("e1", "f2")).toBe(true);
+		expect(line.isLegal("e1", "d1")).toBe(false);
+	});
+
 	it("only starts from a FEN chess.js accepts", () => {
 		expect(ExploreLine.canStart(START)).toBe(true);
 		expect(ExploreLine.canStart("not a fen")).toBe(false);
