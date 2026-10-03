@@ -14,7 +14,7 @@ const VOLUME = { min: 0, max: 100, step: 5 };
 const SOUNDS_DESC = "Play a short tone for each move and a different one for captures.";
 const VOLUME_DESC = "Loudness of the move sounds.";
 const ANNOUNCE_DESC = "Have screen readers read out each move as you step through a game.";
-const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+const ALIASES_DESC = "Off by default. When another plugin already renders blocks with that name, the one that loads first keeps them. Takes effect after reloading Obsidian.";
 
 // The code block names rendered besides chessboard, and what each renders as.
 const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [

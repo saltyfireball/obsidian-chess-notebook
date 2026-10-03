@@ -23,6 +23,14 @@ describe("legalTargets", () => {
 		]));
 	});
 
+	it("marks an en passant capture, though its square is empty", () => {
+		const fen = "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3";
+		expect(legalTargets(fen, "e5")).toEqual(expect.arrayContaining([
+			{ square: "e6", capture: false },
+			{ square: "f6", capture: true },
+		]));
+	});
+
 	it("lists a promotion square once", () => {
 		expect(legalTargets("8/4P3/8/8/8/8/k7/7K w - - 0 1", "e7")).toEqual([{ square: "e8", capture: false }]);
 	});

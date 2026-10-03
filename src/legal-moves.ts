@@ -3,7 +3,7 @@ import type { Square } from "chess.js";
 
 export interface LegalTarget {
 	square: string;
-	// A piece stands there, so the move takes it.
+	// The move takes a piece, en passant included (its square is empty).
 	capture: boolean;
 }
 
@@ -27,7 +27,7 @@ export function legalTargets(fen: string, square: string): LegalTarget[] {
 	for (const move of moves) {
 		if (seen.has(move.to)) continue;
 		seen.add(move.to);
-		targets.push({ square: move.to, capture: chess.get(move.to) !== undefined });
+		targets.push({ square: move.to, capture: move.captured !== undefined });
 	}
 	return targets;
 }

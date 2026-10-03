@@ -35,3 +35,27 @@ export function aliasType(alias: BlockAlias, source: string, src: string | null 
 	if (ext) return ext[1].toLowerCase() as ChessFormat;
 	return detectChessFormat(source) ?? "fen";
 }
+
+// The src: option's file path on a fence or header line, null without one.
+export function srcOption(line: string): string | null {
+	const m = /src:(?:"([^"]+)"|(\S+))/i.exec(line);
+	return m ? m[1] ?? m[2] : null;
+}
+
+const TYPE_OPTION = /type:(fen|pgn)/i;
+
+// An alias block as a chessboard block: its fence line and text with the
+// type: made explicit. A type: on the fence line or the block's first line
+// wins over detection. A src: header on the first line (with no type:) gets
+// the type put on that line, so the header is still read as options.
+export function aliasBlock(alias: BlockAlias, fenceLine: string, source: string): { fenceLine: string; source: string } {
+	const lines = source.split("\n");
+	const first = lines[0] ?? "";
+	if (TYPE_OPTION.test(fenceLine) || TYPE_OPTION.test(first)) return { fenceLine, source };
+	const header = srcOption(first) !== null;
+	const body = header ? lines.slice(1).join("\n") : source;
+	// The header's src: wins over the fence's, as it does in parseCodeBlock.
+	const type = aliasType(alias, body, srcOption(first) ?? srcOption(fenceLine));
+	if (header) return { fenceLine, source: [`type:${type} ${first.trim()}`, ...lines.slice(1)].join("\n") };
+	return { fenceLine: `type:${type} ${fenceLine}`.trim(), source };
+}
