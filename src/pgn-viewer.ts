@@ -3,6 +3,7 @@ import { BoardManager } from "./board-manager";
 import { parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
 import { drawReason, positionKey } from "./draw";
+import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
@@ -497,17 +498,16 @@ export class PgnViewer {
 
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
-		this.createNavButton(controls, "Copy PGN", "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z", () => this.copyPgn());
+		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
+			copyWithFeedback(copyFen, this.currentFen(), "FEN", (fn, ms) => this.later(fn, ms)));
+		const copyPgn: HTMLElement = this.createNavButton(controls, "Copy PGN", ICON_COPY, () =>
+			copyWithFeedback(copyPgn, this.rawPgn, "PGN", (fn, ms) => this.later(fn, ms)));
 	}
 
-	private copyPgn(): void {
-		void navigator.clipboard.writeText(this.rawPgn).then(() => {
-			const btn = this.wrapper.querySelector("[aria-label='Copy PGN']");
-			if (btn) {
-				btn.addClass("sfb-chess-btn-copied");
-				this.later(() => btn.removeClass("sfb-chess-btn-copied"), 1500);
-			}
-		});
+	// The position on the board: the start, or the move the viewer is on.
+	private currentFen(): string {
+		const flat = this.allFlatMoves.find((fm) => fm.id === this.currentMoveId);
+		return flat ? flat.node.fen : this.startingFen;
 	}
 
 	private createNavButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {

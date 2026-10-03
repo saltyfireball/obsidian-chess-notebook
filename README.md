@@ -194,7 +194,7 @@ Header tags White, Black, Result, Event, Site, Date, Round and ECO show in the h
 
 ## Controls
 
-Under the board: puzzle mode, step mode, hint, reset, flip, auto-play, first/previous/next/last move, and copy PGN.
+Under the board: puzzle mode, step mode, hint, reset, flip, auto-play, first/previous/next/last move, copy FEN (the position on the board) and copy PGN. FEN sequences have copy FEN too.
 
 ## Installation
 

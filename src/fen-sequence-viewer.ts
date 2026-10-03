@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { copyWithFeedback, ICON_FEN } from "./clipboard";
 import type { ChessSettings, CodeBlockOptions } from "./types";
 
 interface FenStep {
@@ -18,6 +19,7 @@ export class FenSequenceViewer {
 	private movesContainer: HTMLElement;
 	private wrapper: HTMLElement;
 	private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
+	private timers = new Set<number>();
 
 	constructor(
 		container: HTMLElement,
@@ -228,6 +230,19 @@ export class FenSequenceViewer {
 		this.createNavButton(controls, "Previous position", "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z", () => this.prevMove());
 		this.createNavButton(controls, "Next position", "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z", () => this.nextMove());
 		this.createNavButton(controls, "Last position", "M16 18V6h2v12h-2zM8 18V6l6 6-6 6z", () => this.goToMove(this.steps.length - 1));
+
+		controls.createDiv({ cls: "sfb-chess-controls-sep" });
+
+		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
+			copyWithFeedback(copyFen, this.steps[this.currentIndex].fen, "FEN", (fn, ms) => this.later(fn, ms)));
+	}
+
+	private later(fn: () => void, ms: number): void {
+		const id = window.setTimeout(() => {
+			this.timers.delete(id);
+			fn();
+		}, ms);
+		this.timers.add(id);
 	}
 
 	private createNavButton(
@@ -235,7 +250,7 @@ export class FenSequenceViewer {
 		label: string,
 		iconPath: string,
 		handler: () => void,
-	): void {
+	): HTMLElement {
 		const btn = parent.createEl("button", {
 			cls: "sfb-chess-btn",
 			attr: { "aria-label": label },
@@ -250,6 +265,7 @@ export class FenSequenceViewer {
 		svg.appendChild(path);
 		btn.appendChild(svg);
 		btn.addEventListener("click", handler);
+		return btn;
 	}
 
 	private applyStartAt(startAt: import("./types").StartAt): void {
@@ -320,6 +336,8 @@ export class FenSequenceViewer {
 	}
 
 	destroy(): void {
+		for (const id of this.timers) window.clearTimeout(id);
+		this.timers.clear();
 		if (this.keyboardHandler) {
 			this.wrapper.removeEventListener("keydown", this.keyboardHandler);
 			this.keyboardHandler = null;
