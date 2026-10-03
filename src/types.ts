@@ -6,6 +6,10 @@ export interface ChessSettings {
 	animationDuration: number;
 	autoPlaySpeed: number;
 	fanPieceSet: string;
+	// Also render chess, pgn and fen code blocks. Read once at load.
+	chessBlocks: boolean;
+	pgnBlocks: boolean;
+	fenBlocks: boolean;
 }
 
 export const DEFAULT_SETTINGS: ChessSettings = {
@@ -14,6 +18,9 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
 	fanPieceSet: "standard",
+	chessBlocks: true,
+	pgnBlocks: true,
+	fenBlocks: true,
 };
 
 export type ChessMode = "normal" | "puzzle" | "step" | "drill";

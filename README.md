@@ -145,6 +145,20 @@ The play button plays the game through at the speed set in the settings. Press i
 ```
 ````
 
+### chess, pgn and fen blocks
+
+Notes written for other tools work without edits: `pgn`, `fen` and `chess` code blocks render too. A `pgn` block is a `chessboard type:pgn` block and a `fen` block is a `chessboard type:fen` block. A `chess` block holds either: text with `[Tags]` or move numbers is a PGN, anything else a FEN. All the options work on these blocks as well.
+
+<img src="docs/media/pgn-block.png" width="420" alt="A pgn code block rendered as a board">
+
+````markdown
+```pgn title:"Scholar's Mate"
+1.e4 e5 2.Bc4 Nc6 3.Qh5 Nf6 4.Qxf7# 1-0
+```
+````
+
+Each name can be turned off in the settings, for vaults where something else already renders it. Obsidian reads code block names when it loads, so reload it after changing one.
+
 ### Eight piece sets and figurine notation
 
 Pick a default piece set in the settings, or set one per block with `pieces:name`: `standard` (default), `celtic`, `fantasy`, `firi`, `kiwen-suwi`, `rhosgfx`, `shapes`, `spatial`.
@@ -173,6 +187,7 @@ The settings tab has a How to use page, a quick reference for blocks, header tag
 
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
+- **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all on by default). Reload Obsidian after changing one.
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
 <img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">
