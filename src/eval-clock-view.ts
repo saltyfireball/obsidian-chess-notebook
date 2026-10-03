@@ -1,5 +1,5 @@
 import type { MoveNode } from "./pgn-parser";
-import { evalLabel, formatClock, hasEvalClock, latestEvalClock, pathTo, whiteShare } from "./eval-clock";
+import { evalLabel, formatClock, hasEvalClock, latestEvalClock, linePath, whiteShare } from "./eval-clock";
 
 // The eval bar beside the board and each side's clock above and below it,
 // from the [%eval] / [%clk] the PGN carries. Absent when it carries neither.
@@ -12,6 +12,7 @@ export class EvalClockView {
 	private currentId: string | null = null;
 	// Kept here rather than read from the board, which turns asynchronously.
 	private flipped = false;
+	private evalHidden = false;
 
 	// Wraps boardWrapper in a row with the bar; call before the board is built.
 	static create(
@@ -62,16 +63,29 @@ export class EvalClockView {
 		this.refresh();
 	}
 
+	// Hides the eval while a puzzle or drill is being solved: a "#3" would give
+	// the answer away. The clocks stay.
+	setEvalHidden(hidden: boolean): void {
+		if (hidden === this.evalHidden) return;
+		this.evalHidden = hidden;
+		this.refresh();
+	}
+
 	private refresh(): void {
-		const path = this.currentId ? pathTo(this.mainline, this.currentId) : [];
-		const { evaluation, white, black } = latestEvalClock(path);
+		const { path, lineStart } = this.currentId ? linePath(this.mainline, this.currentId) : { path: [], lineStart: 0 };
+		const latest = latestEvalClock(path, lineStart);
+		const { white, black } = latest;
+		const evaluation = this.evalHidden ? null : latest.evaluation;
 		const whiteBottom = !this.flipped;
 
 		if (this.bar && this.barWhite && this.barLabel) {
 			const share = whiteShare(evaluation);
+			this.bar.toggleClass("is-hidden", this.evalHidden);
 			this.bar.toggleClass("is-flipped", !whiteBottom);
 			this.barWhite.style.height = `${(share * 100).toFixed(1)}%`;
 			this.barLabel.setText(evaluation ? evalLabel(evaluation) : "");
+			// Carried over from an earlier move in this line: shown dimmed.
+			this.barLabel.toggleClass("is-stale", latest.stale);
 			// The label sits at the end of the side that is ahead.
 			this.barLabel.toggleClass("is-white", share >= 0.5);
 			this.barLabel.toggleClass("is-top", (share >= 0.5) !== whiteBottom);

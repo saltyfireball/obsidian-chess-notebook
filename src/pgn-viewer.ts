@@ -972,7 +972,15 @@ export class PgnViewer {
 		const hidden = (this.puzzleMode && !this.puzzleComplete) || this.drillRunning();
 		const shapes = flat ? flat.node.shapes : this.startingShapes;
 		this.boardManager.showShapes(hidden ? NO_SHAPES : shapes);
+		this.updateEvalVisibility();
 		this.evalClock?.show(flat ? flat.id : null);
+	}
+
+	// No eval while a puzzle or drill is being solved: after the opponent's
+	// move a "#3" says the position is won. Step mode never shows a move past
+	// the current one, so its eval is always of a position already reached.
+	private updateEvalVisibility(): void {
+		this.evalClock?.setEvalHidden((this.puzzleMode && !this.puzzleComplete) || this.drillRunning());
 	}
 
 	private updateDrawBadge(fen: string, repeats: number): void {
@@ -1238,6 +1246,7 @@ export class PgnViewer {
 		this.resetBoardPosition();
 		this.clearHint();
 		this.movesContainer.removeClass("sfb-chess-moves-hidden");
+		this.updateEvalVisibility();
 		this.showPuzzleReport(this.drillPath);
 		this.showCompleteBanner("Drill complete!");
 	}
