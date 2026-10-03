@@ -23,6 +23,9 @@ export type ChessMode = "normal" | "puzzle" | "step" | "drill";
 
 export type Notation = "san" | "fan";
 
+// A number is a zero-based index: a mainline half-move in a PGN (0 is the
+// position after White's first move), a step in a FEN sequence. Kept as an
+// index so existing notes keep opening on the same position.
 export type StartAt = "start" | "end" | number;
 
 export interface CodeBlockOptions {
@@ -113,6 +116,12 @@ export const LAST_MOVE_LIGHT: MarkerType = {
 
 export const LAST_MOVE_DARK: MarkerType = {
 	class: "marker-lastmove-dark",
+	slice: "markerSquare",
+};
+
+// The square of a king in check.
+export const CHECK_MARKER: MarkerType = {
+	class: "marker-check",
 	slice: "markerSquare",
 };
 
