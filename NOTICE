@@ -1,0 +1,95 @@
+This plugin is MIT licensed (see LICENSE). Its release build (main.js)
+bundles the third-party code and artwork listed below, each under its own
+license.
+
+Code
+====
+
+cm-chessboard
+  https://github.com/shaack/cm-chessboard
+  Copyright (c) 2017 Stefan Haack <shaack@gmail.com> (http://shaack.com)
+  MIT License. The marker and arrow sprites in src/sprites.ts come from
+  cm-chessboard under the same license.
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+chess.js
+  https://github.com/jhlywa/chess.js
+  Copyright (c) 2025, Jeff Hlywa (jhlywa@gmail.com)
+  All rights reserved.
+  BSD 2-Clause License.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
+
+Piece sets
+==========
+
+The piece artwork is not covered by this plugin's MIT license. Each set
+keeps the license its authors gave it.
+
+standard (the default set, in src/sprites.ts)
+  Chess pieces from Wikimedia Commons,
+  https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces/Standard
+  Authors: Cburnett (https://en.wikipedia.org/wiki/User:Cburnett) and
+  Rfc1394 (https://en.wikipedia.org/wiki/User:Rfc1394), modified by
+  Stefan Haack for cm-chessboard.
+  License: CC BY-SA 3.0, https://creativecommons.org/licenses/by-sa/3.0/
+
+The sets below (in src/piece-sets.ts) are copied unmodified from lichess,
+https://github.com/lichess-org/lila/tree/master/public/piece, with authors
+and licenses as listed in lichess's COPYING.md.
+
+celtic, fantasy, spatial
+  Author: Maurizio Monge
+  License: MIT, https://opensource.org/licenses/MIT
+
+rhosgfx
+  Author: RhosGFX
+  License: CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/
+
+kiwen-suwi
+  Author: neverRare
+  License: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+firi
+  Author: James Faure
+  License: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+
+shapes
+  Author: flugsio
+  License: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/

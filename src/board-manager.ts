@@ -1,0 +1,231 @@
+import {
+	Chessboard,
+	FEN,
+	COLOR,
+	BORDER_TYPE,
+	INPUT_EVENT_TYPE,
+} from "cm-chessboard/src/Chessboard.js";
+import { Markers } from "cm-chessboard/src/extensions/markers/Markers.js";
+import { Arrows } from "cm-chessboard/src/extensions/arrows/Arrows.js";
+import { Svg } from "cm-chessboard/src/lib/Svg.js";
+import { PIECES_SVG, MARKERS_SVG, ARROWS_SVG } from "./sprites";
+import { getPieceSet, replacePiecesInContainer } from "./fan-pieces";
+import {
+	LAST_MOVE_LIGHT,
+	LAST_MOVE_DARK,
+	HINT_FROM_LIGHT,
+	HINT_FROM_DARK,
+	HINT_TO_LIGHT,
+	HINT_TO_DARK,
+	isLightSquare,
+} from "./types";
+import type { ChessSettings } from "./types";
+
+interface MoveInputEvent {
+	type: string;
+	squareFrom: string;
+	squareTo: string;
+}
+
+const SPRITE_IDS = ["cm-chessboard-sprite", "cm-chessboard-markers", "cm-chessboard-arrows"];
+
+// Documents holding the sprites: the main window plus any popout that has
+// rendered a board. <use href="#wk"> resolves only within its own document.
+const spriteDocs = new Set<Document>();
+let svgPatched = false;
+
+function injectSprite(doc: Document, id: string, svgContent: string): void {
+	if (doc.getElementById(id)) {
+		return;
+	}
+	const wrapper = doc.createElement("div");
+	wrapper.addClass("sfb-chess-sprite-cache");
+	wrapper.setAttribute("aria-hidden", "true");
+	wrapper.id = id;
+	const parser = new DOMParser();
+	const parsed = parser.parseFromString(svgContent, "image/svg+xml");
+	const svg = parsed.documentElement;
+	wrapper.appendChild(doc.importNode(svg, true));
+	doc.body.appendChild(wrapper);
+}
+
+export function injectSprites(doc: Document): void {
+	if (!svgPatched) {
+		Svg.removeElement = (element: unknown): void => {
+			const el = element as Element | null;
+			if (el && el.parentNode) {
+				el.parentNode.removeChild(el);
+			}
+		};
+		svgPatched = true;
+	}
+
+	injectSprite(doc, SPRITE_IDS[0], PIECES_SVG);
+	injectSprite(doc, SPRITE_IDS[1], MARKERS_SVG);
+	injectSprite(doc, SPRITE_IDS[2], ARROWS_SVG);
+	spriteDocs.add(doc);
+}
+
+export function removeSprites(): void {
+	for (const doc of spriteDocs) {
+		for (const id of SPRITE_IDS) {
+			doc.getElementById(id)?.remove();
+		}
+	}
+	spriteDocs.clear();
+}
+
+export class BoardManager {
+	private board: Chessboard;
+	private container: HTMLElement;
+	private pieceSetName: string | null = null;
+	private timers = new Set<number>();
+
+	constructor(
+		container: HTMLElement,
+		fen: string,
+		settings: ChessSettings,
+		pieceSetName?: string,
+	) {
+		this.container = container;
+		// The standard set is the sprite the board already draws.
+		this.pieceSetName = pieceSetName && getPieceSet(pieceSetName) ? pieceSetName : null;
+		injectSprites(container.doc);
+
+		this.board = new Chessboard(container, {
+			position: fen || FEN.start,
+			orientation: COLOR.white,
+			responsive: true,
+			assetsCache: true,
+			assetsUrl: "",
+			style: {
+				cssClass: settings.boardTheme,
+				showCoordinates: settings.showCoordinates,
+				borderType: BORDER_TYPE.none,
+				aspectRatio: 1,
+				animationDuration: settings.animationDuration,
+			},
+			extensions: [
+				{
+					class: Markers,
+					props: { autoMarkers: null },
+				},
+				{
+					class: Arrows,
+					props: {},
+				},
+			],
+		});
+
+		this.replacePieces();
+		// Catch late redraws from resize observer on initial load
+		if (this.pieceSetName) {
+			this.later(() => {
+				if (this.container.querySelectorAll("use.piece").length > 0) {
+					this.replacePieces();
+				}
+			}, 300);
+		}
+	}
+
+	private later(fn: () => void, ms: number): void {
+		const id = window.setTimeout(() => {
+			this.timers.delete(id);
+			fn();
+		}, ms);
+		this.timers.add(id);
+	}
+
+	private replacePieces(): void {
+		if (!this.pieceSetName) return;
+		replacePiecesInContainer(this.container, this.pieceSetName);
+	}
+
+	setPosition(fen: string, animated: boolean = true): Promise<void> {
+		const p = this.board.setPosition(fen, animated);
+		if (this.pieceSetName) {
+			void p.then(() => this.replacePieces());
+		}
+		return p;
+	}
+
+	highlightLastMove(from: string, to: string): void {
+		this.board.removeMarkers(LAST_MOVE_LIGHT);
+		this.board.removeMarkers(LAST_MOVE_DARK);
+
+		const fromType = isLightSquare(from) ? LAST_MOVE_LIGHT : LAST_MOVE_DARK;
+		const toType = isLightSquare(to) ? LAST_MOVE_LIGHT : LAST_MOVE_DARK;
+
+		this.board.addMarker(fromType, from);
+		this.board.addMarker(toType, to);
+	}
+
+	clearHighlights(): void {
+		this.board.removeMarkers(LAST_MOVE_LIGHT);
+		this.board.removeMarkers(LAST_MOVE_DARK);
+	}
+
+	flip(): void {
+		const current = this.board.getOrientation();
+		const next = current === COLOR.white ? COLOR.black : COLOR.white;
+		void this.board.setOrientation(next, true).then(() => this.replacePieces());
+	}
+
+	getOrientation(): string {
+		return this.board.getOrientation();
+	}
+
+	enablePuzzleInput(
+		canPickUp: (square: string) => boolean,
+		isLegal: (from: string, to: string) => boolean,
+		onMoveFinished: (from: string, to: string) => void,
+	): void {
+		try { this.board.disableMoveInput(); } catch { /* not enabled */ }
+		this.board.enableMoveInput((event: MoveInputEvent) => {
+			if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
+				return canPickUp(event.squareFrom);
+			}
+			if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
+				return isLegal(event.squareFrom, event.squareTo);
+			}
+			if (event.type === INPUT_EVENT_TYPE.moveInputFinished) {
+				onMoveFinished(event.squareFrom, event.squareTo);
+			}
+			return undefined;
+		});
+	}
+
+	disablePuzzleInput(): void {
+		try { this.board.disableMoveInput(); } catch { /* ignore */ }
+	}
+
+	flashWrong(): void {
+		this.container.addClass("sfb-chess-wrong-flash");
+		this.later(() => {
+			this.container.removeClass("sfb-chess-wrong-flash");
+		}, 400);
+	}
+
+	clearHintMarkers(): void {
+		this.board.removeMarkers(HINT_FROM_LIGHT);
+		this.board.removeMarkers(HINT_FROM_DARK);
+		this.board.removeMarkers(HINT_TO_LIGHT);
+		this.board.removeMarkers(HINT_TO_DARK);
+	}
+
+	addHintFromMarker(square: string): void {
+		const type = isLightSquare(square) ? HINT_FROM_LIGHT : HINT_FROM_DARK;
+		this.board.addMarker(type, square);
+	}
+
+	addHintToMarker(square: string): void {
+		const type = isLightSquare(square) ? HINT_TO_LIGHT : HINT_TO_DARK;
+		this.board.addMarker(type, square);
+	}
+
+	destroy(): void {
+		for (const id of this.timers) window.clearTimeout(id);
+		this.timers.clear();
+		this.board.destroy();
+	}
+}

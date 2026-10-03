@@ -1,0 +1,38 @@
+{
+	"name": "obsidian-chess-notebook",
+	"version": "1.0.0",
+	"description": "Interactive chessboards from FEN and PGN code blocks.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"test": "vitest run",
+		"lint": "eslint src",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"chess",
+		"chessboard",
+		"pgn",
+		"fen"
+	],
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "22.20.5",
+		"@typescript-eslint/parser": "8.57.2",
+		"esbuild": "0.28.2",
+		"eslint": "9.39.4",
+		"eslint-plugin-obsidianmd": "0.1.9",
+		"obsidian": "1.12.3",
+		"tslib": "2.4.0",
+		"typescript": "5.9.3",
+		"vitest": "5.0.3"
+	},
+	"dependencies": {
+		"chess.js": "1.4.0",
+		"cm-chessboard": "8.11.5"
+	}
+}

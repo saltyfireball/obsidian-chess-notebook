@@ -1,0 +1,742 @@
+/* ============================================================
+   Sprite cache (hidden SVG containers)
+   ============================================================ */
+
+.sfb-chess-sprite-cache {
+    transform: scale(0);
+    position: absolute;
+}
+
+/* ============================================================
+   cm-chessboard core styles
+   ============================================================ */
+
+.cm-chessboard .board.input-enabled .square {
+    cursor: pointer;
+}
+
+.cm-chessboard .coordinates,
+.cm-chessboard .markers-layer,
+.cm-chessboard .pieces-layer,
+.cm-chessboard .markers-top-layer {
+    pointer-events: none;
+}
+
+/* ============================================================
+   Custom board theme: sfb-chess (Lichess-style green)
+   Light: #EBECD3  Dark: #7A945A
+   ============================================================ */
+
+.cm-chessboard.sfb-chess .board .square.white {
+    fill: #ebecd3;
+}
+
+.cm-chessboard.sfb-chess .board .square.black {
+    fill: #7a945a;
+}
+
+.cm-chessboard.sfb-chess.border-type-none .board .border {
+    stroke: #7a945a;
+    stroke-width: 0;
+    fill: #7a945a;
+}
+
+.cm-chessboard.sfb-chess .coordinates {
+    pointer-events: none;
+    user-select: none;
+}
+
+.cm-chessboard.sfb-chess .coordinates .coordinate {
+    fill: #6b8550;
+    font-size: 7px;
+    cursor: default;
+    font-weight: bold;
+}
+
+.cm-chessboard.sfb-chess .coordinates .coordinate.black {
+    fill: #ebecd3;
+}
+
+.cm-chessboard.sfb-chess .coordinates .coordinate.white {
+    fill: #6b8550;
+}
+
+/* ============================================================
+   Markers extension styles
+   ============================================================ */
+
+.cm-chessboard .markers {
+    pointer-events: none;
+}
+
+.cm-chessboard .markers .marker.marker-frame {
+    stroke: black;
+    stroke-width: 1.8px;
+    opacity: 0.5;
+}
+
+.cm-chessboard .markers .marker.marker-square {
+    fill: black;
+    opacity: 0.11;
+}
+
+.cm-chessboard .markers .marker.marker-dot {
+    fill: black;
+    opacity: 0.2;
+}
+
+/* Last move highlight markers */
+.cm-chessboard .markers .marker.marker-lastmove-light {
+    fill: #c4c574;
+    opacity: 1;
+}
+
+.cm-chessboard .markers .marker.marker-lastmove-dark {
+    fill: #a7b250;
+    opacity: 1;
+}
+
+/* ============================================================
+   Arrows extension styles
+   ============================================================ */
+
+.cm-chessboard .arrow-warning .arrow-head {
+    fill: rgba(255, 170, 0, 0.78);
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-warning .arrow-line {
+    stroke: rgba(255, 170, 0, 0.78);
+    stroke-linecap: round;
+    opacity: 0.6;
+}
+
+.cm-chessboard .arrow-danger .arrow-head {
+    fill: rgba(220, 100, 100, 0.78);
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-danger .arrow-line {
+    stroke: rgba(220, 100, 100, 0.78);
+    stroke-linecap: round;
+    opacity: 0.5;
+}
+
+.cm-chessboard .arrow-success .arrow-head {
+    fill: rgba(100, 200, 100, 0.78);
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-success .arrow-line {
+    stroke: rgba(100, 200, 100, 0.78);
+    stroke-linecap: round;
+    opacity: 0.5;
+}
+
+.cm-chessboard .arrow-info .arrow-head {
+    fill: rgba(100, 190, 220, 0.78);
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-info .arrow-line {
+    stroke: rgba(100, 190, 220, 0.78);
+    stroke-linecap: butt;
+    opacity: 0.4;
+}
+
+.cm-chessboard .arrow-secondary .arrow-head {
+    fill: #666;
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-secondary .arrow-line {
+    stroke: #666;
+    stroke-linecap: butt;
+    opacity: 0.5;
+}
+
+/* ============================================================
+   Plugin layout styles
+   ============================================================ */
+
+.sfb-chess-container {
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-center-wrapper > .sfb-chess-container {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* FEN viewer: just the board */
+.sfb-chess-fen {
+    max-width: 420px;
+}
+
+.sfb-chess-fen .sfb-chess-board-wrapper {
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+/* PGN viewer: board + sidebar layout */
+.sfb-chess-pgn {
+    max-width: 780px;
+}
+
+.sfb-chess-header {
+    background: var(--background-secondary-alt);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin-bottom: 2px;
+}
+
+.sfb-chess-players {
+    font-size: 14px;
+    color: var(--text-normal);
+}
+
+.sfb-chess-white-name {
+    font-weight: 400;
+}
+
+.sfb-chess-vs {
+    color: var(--text-muted);
+    margin: 0 2px;
+}
+
+.sfb-chess-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.sfb-chess-content {
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+}
+
+.sfb-chess-board-column {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    width: 420px;
+}
+
+.sfb-chess-pgn .sfb-chess-board-wrapper {
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+.sfb-chess-sidebar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-height: 462px;
+    background: var(--background-primary);
+    border-left: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-moves {
+    flex: 1;
+    overflow-y: auto;
+    padding-left: 4px;
+    font-size: 13px;
+    font-family: var(--font-monospace);
+}
+
+.sfb-chess-move-row {
+    display: flex;
+    align-items: center;
+    padding: 1px 8px;
+    background: #727072;
+}
+
+.sfb-chess-move-row-alt {
+    background: #403e41;
+}
+
+.sfb-chess-move-row:hover {
+    background: #3a373b;
+}
+
+.sfb-chess-move-number {
+    flex: 0 0 32px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: right;
+    padding-right: 6px;
+}
+
+.sfb-chess-move {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 3px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--text-normal);
+}
+
+.sfb-chess-move:hover {
+    background: var(--background-modifier-hover);
+}
+
+.sfb-chess-move-active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.sfb-chess-move-active:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.sfb-chess-move-spacer {
+    cursor: default;
+    color: var(--text-muted);
+}
+
+.sfb-chess-move-spacer:hover {
+    background: none;
+}
+
+.sfb-chess-move-comment {
+    padding: 4px 10px 4px 46px;
+    font-size: 11px;
+    color: var(--text-accent);
+    font-style: italic;
+    line-height: 1.4;
+    font-family: var(--font-text);
+    transition: opacity 0.15s ease;
+}
+
+.sfb-chess-comment-dimmed {
+    opacity: 0.35;
+}
+
+.sfb-chess-comment-active {
+    opacity: 1;
+}
+
+/* Variation blocks */
+.sfb-chess-variation {
+    border-left: 3px solid var(--background-modifier-border);
+    margin: 2px 0 2px 12px;
+    padding-left: 6px;
+}
+
+.sfb-chess-variation .sfb-chess-move-row {
+    font-size: 12px;
+}
+
+.sfb-chess-variation .sfb-chess-move-comment {
+    font-size: 10px;
+    padding-left: 38px;
+}
+
+.sfb-chess-variation .sfb-chess-move-number {
+    flex: 0 0 26px;
+    font-size: 11px;
+}
+
+.sfb-chess-move-result {
+    padding: 6px 10px 6px 46px;
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--text-muted);
+}
+
+/* Navigation controls */
+.sfb-chess-controls {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: var(--background-secondary-alt);
+}
+
+.sfb-chess-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 30px;
+    border: none;
+    border-radius: 4px;
+    background: var(--background-modifier-border);
+    color: var(--text-normal);
+    cursor: pointer;
+    padding: 0;
+}
+
+.sfb-chess-btn:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.sfb-chess-btn svg {
+    pointer-events: none;
+}
+
+/* Responsive: stack vertically when narrow */
+@container (max-width: 600px) {
+    .sfb-chess-content {
+        flex-direction: column;
+    }
+
+    .sfb-chess-board-column {
+        width: 100%;
+    }
+
+    .sfb-chess-sidebar {
+        max-height: 300px;
+        border-left: none;
+        border-top: 1px solid var(--background-modifier-border);
+    }
+}
+
+.sfb-chess-pgn {
+    container-type: inline-size;
+}
+
+/* Fallback for environments without container queries */
+@media (max-width: 550px) {
+    .sfb-chess-content {
+        flex-direction: column;
+    }
+
+    .sfb-chess-board-column {
+        width: 100% !important;
+    }
+
+    .sfb-chess-sidebar {
+        max-height: 300px;
+        border-left: none;
+        border-top: 1px solid var(--background-modifier-border);
+    }
+}
+
+/* Settings tab */
+.sfb-chess-settings-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 8px 0 16px;
+}
+
+.sfb-chess-settings-table th,
+.sfb-chess-settings-table td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-settings-table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.sfb-chess-settings-table code {
+    font-size: 12px;
+}
+
+.sfb-chess-settings-usage pre {
+    margin: 8px 0;
+}
+
+.sfb-chess-settings-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* ============================================================
+   Toggle buttons (puzzle, step, hint)
+   ============================================================ */
+
+.sfb-chess-toggle-btn {
+    position: relative;
+}
+
+.sfb-chess-toggle-active {
+    background: rgba(255, 170, 0, 0.85) !important;
+    color: #000 !important;
+}
+
+.sfb-chess-toggle-active:hover {
+    background: rgba(255, 170, 0, 1) !important;
+    color: #000 !important;
+}
+
+.sfb-chess-toggle-active-strong {
+    background: rgba(100, 190, 220, 0.85) !important;
+    color: #000 !important;
+}
+
+.sfb-chess-toggle-active-strong:hover {
+    background: rgba(100, 190, 220, 1) !important;
+    color: #000 !important;
+}
+
+.sfb-chess-btn-hidden {
+    display: none;
+}
+
+.sfb-chess-controls-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--background-modifier-border);
+    align-self: center;
+    margin: 0 4px;
+}
+
+.sfb-chess-btn-copied {
+    color: #A9DC76 !important;
+}
+
+/* ============================================================
+   Hidden moves (puzzle/step mode)
+   ============================================================ */
+
+.sfb-chess-move-hidden {
+    display: none;
+}
+
+.sfb-chess-row-hidden {
+    display: none;
+}
+
+.sfb-chess-variation-dimmed {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.sfb-chess-variation-hidden {
+    display: none;
+}
+
+/* ============================================================
+   Hint markers
+   ============================================================ */
+
+.cm-chessboard .markers .marker.marker-hint-from-light {
+    fill: #f7ec59;
+    opacity: 0.85;
+}
+
+.cm-chessboard .markers .marker.marker-hint-from-dark {
+    fill: #dac923;
+    opacity: 0.85;
+}
+
+.cm-chessboard .markers .marker.marker-hint-to-light {
+    fill: rgba(100, 190, 220, 0.85);
+    opacity: 1;
+}
+
+.cm-chessboard .markers .marker.marker-hint-to-dark {
+    fill: rgba(70, 160, 190, 0.85);
+    opacity: 1;
+}
+
+/* ============================================================
+   Wrong move flash animation
+   ============================================================ */
+
+.sfb-chess-board-wrapper {
+    position: relative;
+}
+
+.sfb-chess-flash-wrong::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(220, 100, 100, 0.35);
+    pointer-events: none;
+    z-index: 50;
+    animation: sfb-flash-wrong 0.5s ease forwards;
+}
+
+@keyframes sfb-flash-wrong {
+    0% {
+        opacity: 0;
+    }
+    15% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* ============================================================
+   NAG annotation glyphs
+   ============================================================ */
+
+/* Base: shared by all NAG types */
+.sfb-chess-nag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    cursor: default;
+}
+
+/* --- Move quality ($1-$6): colored circles --- */
+.sfb-chess-nag-brilliant,
+.sfb-chess-nag-good,
+.sfb-chess-nag-interesting,
+.sfb-chess-nag-inaccuracy,
+.sfb-chess-nag-mistake,
+.sfb-chess-nag-blunder {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 10px;
+}
+
+.sfb-chess-nag-brilliant {
+    background: rgba(100, 190, 220, 1);
+    color: #000;
+}
+
+.sfb-chess-nag-good {
+    background: rgba(100, 200, 100, 1);
+    color: #000;
+}
+
+.sfb-chess-nag-interesting {
+    background: rgba(100, 190, 220, 0.7);
+    color: #000;
+}
+
+.sfb-chess-nag-inaccuracy {
+    background: rgba(255, 170, 0, 1);
+    color: #000;
+}
+
+.sfb-chess-nag-mistake {
+    background: rgba(220, 160, 90, 1);
+    color: #000;
+}
+
+.sfb-chess-nag-blunder {
+    background: rgba(220, 100, 100, 1);
+    color: #000;
+}
+
+/* --- Evaluation annotations: inline text --- */
+.sfb-chess-nag-eval {
+    font-weight: 700;
+    font-size: 0.9em;
+    color: var(--text-muted);
+}
+
+.sfb-chess-nag-eval-white {
+    font-weight: 700;
+    font-size: 0.9em;
+    color: rgba(100, 200, 100, 0.9);
+}
+
+.sfb-chess-nag-eval-black {
+    font-weight: 700;
+    font-size: 0.9em;
+    color: rgba(220, 160, 90, 0.9);
+}
+
+/* --- Positional annotations: muted inline text --- */
+.sfb-chess-nag-positional {
+    font-size: 0.85em;
+    color: var(--text-faint);
+}
+
+/* ============================================================
+   FAN (Figurine Algebraic Notation) piece icons
+   ============================================================ */
+
+.sfb-chess-move-text {
+    display: flex;
+    align-items: center;
+}
+
+.sfb-chess-fan-piece {
+    width: 1.3em;
+    height: 1.3em;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+/* ============================================================
+   Puzzle completion banner
+   ============================================================ */
+
+.sfb-chess-puzzle-complete {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(100, 200, 100, 0.25);
+    color: rgba(100, 200, 100, 1);
+    font-size: 24px;
+    font-weight: 700;
+    z-index: 60;
+    cursor: pointer;
+    pointer-events: auto;
+    animation: sfb-puzzle-complete-in 0.3s ease;
+}
+
+@keyframes sfb-puzzle-complete-in {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* ============================================================
+   Focus-visible styles
+   ============================================================ */
+
+.sfb-chess-btn:focus-visible,
+.sfb-chess-toggle-btn:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+/* ============================================================
+   Player name overflow
+   ============================================================ */
+
+.sfb-chess-white-name,
+.sfb-chess-players strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+    display: inline-block;
+    vertical-align: bottom;
+}
+
+/* Error state */
+.sfb-chess-error {
+    padding: 12px 16px;
+    color: var(--text-error);
+    font-size: 13px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+}
