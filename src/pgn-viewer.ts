@@ -942,9 +942,9 @@ export class PgnViewer {
 			this.boardManager.highlightLastMove(node.from, node.to);
 			this.updateDrawBadge(node.fen, flat.repeats);
 		}
-		// An unsolved puzzle shows no drawings: a study often draws the answer
-		// on the move before it.
-		const hidden = this.puzzleMode && !this.puzzleComplete;
+		// An unsolved puzzle or a running drill shows no drawings: a study often
+		// draws the answer on the move before it.
+		const hidden = (this.puzzleMode && !this.puzzleComplete) || this.drillRunning();
 		const shapes = flat ? flat.node.shapes : this.startingShapes;
 		this.boardManager.showShapes(hidden ? NO_SHAPES : shapes);
 	}
@@ -1171,6 +1171,7 @@ export class PgnViewer {
 	private finishDrill(): void {
 		this.drillComplete = true;
 		this.boardManager.disablePuzzleInput();
+		this.resetBoardPosition();
 		this.clearHint();
 		this.movesContainer.removeClass("sfb-chess-moves-hidden");
 		this.showPuzzleReport(this.drillPath);
