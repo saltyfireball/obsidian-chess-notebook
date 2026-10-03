@@ -76,6 +76,18 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 ```
 ````
 
+### Static diagrams for printing
+
+`interactive:false` (or `diagram:true`) draws a plain board with no controls and no move list, so a PDF export or printout looks like a book diagram. A PGN shows the position at `start_at`, with any `[%cal]`/`[%csl]` drawings on that move; a FEN sequence shows its `start_at` line. `flipped:true` and `pieces:` still apply, and `title:"..."` becomes a caption under the board.
+
+<img src="docs/media/static-diagram.png" width="360" alt="A static diagram of the Opera Game's final position with a caption">
+
+````markdown
+```chessboard type:pgn interactive:false start_at:end title:"Morphy - Duke Karl / Count Isouard, Paris 1858"
+1.e4 e5 2.Nf3 d6 3.d4 Bg4 4.dxe5 Bxf3 5.Qxf3 dxe5 6.Bc4 Nf6 7.Qb3 Qe7 8.Nc3 c6 9.Bg5 b5 10.Nxb5 cxb5 11.Bxb5+ Nbd7 12.O-O-O Rd8 13.Rxd7 Rxd7 14.Rd1 Qe6 15.Bxd7+ Nxd7 16.Qb8+ Nxb8 17.Rd8# 1-0
+```
+````
+
 ### Puzzle mode
 
 Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
@@ -190,6 +202,7 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `center:true\|false` | Center the board horizontally (default: true) |
 | `mode:normal\|puzzle\|step\|drill` | Start in the given mode |
 | `color:white\|black` | The side you play in drill mode (default: White, or Black with `flipped:true`) |
+| `interactive:false` | Static diagram: one position, no controls or move list (also `diagram:true`) |
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
