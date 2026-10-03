@@ -8,6 +8,14 @@ const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
 
+// Built by hand: Object.fromEntries is ES2019, past this tsconfig's lib, so
+// it types as any and the review flags it.
+function pieceSetOptions(): Record<string, string> {
+	const options: Record<string, string> = {};
+	for (const s of listPieceSets()) options[s] = s;
+	return options;
+}
+
 export class ChessSettingTab extends PluginSettingTab {
 	plugin: ChessPlugin;
 
@@ -64,7 +72,7 @@ export class ChessSettingTab extends PluginSettingTab {
 						control: {
 							type: "dropdown",
 							key: "fanPieceSet",
-							options: Object.fromEntries(listPieceSets().map((s) => [s, s])),
+							options: pieceSetOptions(),
 							defaultValue: DEFAULT_SETTINGS.fanPieceSet,
 						},
 					},
