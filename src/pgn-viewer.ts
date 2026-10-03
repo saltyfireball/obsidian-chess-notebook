@@ -2,20 +2,14 @@ import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
 import { hasDrawingsOnly, parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
-import { drawReason, positionKey } from "./draw";
+import { drawLabel, drawReason } from "./draw";
+import { flattenMoves, type FlatMove } from "./flat-moves";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { HintProgress } from "./hints";
-import { drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
+import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
-
-interface FlatMove {
-	node: MoveNode;
-	id: string;
-	// Times the position after this move has occurred in its line, itself included.
-	repeats: number;
-}
 
 const ICON_PUZZLE = "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3.8h1.5c1.38 0 2.5 1.12 2.5 2.5S4.88 15.8 3.5 15.8H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z";
 const ICON_STEP = "M21 13a9 9 0 1 1-9-9M21 3v5h-5";
@@ -69,6 +63,7 @@ export class PgnViewer {
 	private drillPath: MoveNode[] = [];
 	private drillStatus: HTMLElement | null = null;
 	private drillBranches: string[] = [];
+	private drillRuns = new DrillRuns();
 	private notation: Notation = "san";
 	private pieceSetName: string = STANDARD_PIECE_SET;
 	private pieceSetReady = false;
@@ -77,6 +72,7 @@ export class PgnViewer {
 	private autoPlayTimer: number | null = null;
 	private autoPlaySpeed: number;
 	private timers = new Set<number>();
+	private destroyed = false;
 
 	private wrapper: HTMLElement;
 	private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -113,8 +109,7 @@ export class PgnViewer {
 		this.notation = options.notation;
 		this.pieceSetName = resolvePieceSet(options.pieces ?? settings.fanPieceSet);
 
-		this.allFlatMoves = [];
-		this.flattenMoves(parsed.moves, "m", [positionKey(this.startingFen)]);
+		this.allFlatMoves = flattenMoves(parsed.moves, this.startingFen);
 
 		this.wrapper = container.createDiv({ cls: "sfb-chess-container sfb-chess-pgn" });
 		this.wrapper.setAttribute("tabindex", "0");
@@ -202,24 +197,6 @@ export class PgnViewer {
 			}
 		};
 		this.wrapper.addEventListener("keydown", this.keyboardHandler);
-	}
-
-	// path holds the position keys of the line so far. A variation replaces its
-	// parent move, so it continues from the path before that move.
-	private flattenMoves(moves: MoveNode[], prefix: string, path: string[]): void {
-		const startLength = path.length;
-		for (let i = 0; i < moves.length; i++) {
-			const node = moves[i];
-			const id = prefix + "-" + i;
-			const key = positionKey(node.fen);
-			const repeats = path.filter((k) => k === key).length + 1;
-			this.allFlatMoves.push({ node, id, repeats });
-			for (let v = 0; v < node.variations.length; v++) {
-				this.flattenMoves(node.variations[v], id + "v" + v, path);
-			}
-			path.push(key);
-		}
-		path.length = startLength;
 	}
 
 	private buildHeaders(raw: Record<string, string>): PgnHeaders {
@@ -531,9 +508,9 @@ export class PgnViewer {
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
 		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
-			copyWithFeedback(copyFen, this.currentFen(), "FEN", (fn, ms) => this.later(fn, ms)));
+			copyWithFeedback(copyFen, this.currentFen(), "FEN", this.copyHooks()));
 		const copyPgn: HTMLElement = this.createNavButton(controls, "Copy PGN", ICON_COPY, () =>
-			copyWithFeedback(copyPgn, this.rawPgn, "PGN", (fn, ms) => this.later(fn, ms)));
+			copyWithFeedback(copyPgn, this.rawPgn, "PGN", this.copyHooks()));
 	}
 
 	// The position on the board: the start, or the move the viewer is on.
@@ -973,9 +950,9 @@ export class PgnViewer {
 	}
 
 	private updateDrawBadge(fen: string, repeats: number): void {
-		const reason = drawReason(fen, repeats);
-		this.drawBadge.toggleClass("is-hidden", reason === null);
-		this.drawBadge.setText(reason ? "1/2 " + reason : "");
+		const draw = drawReason(fen, repeats);
+		this.drawBadge.toggleClass("is-hidden", draw === null);
+		this.drawBadge.setText(draw ? drawLabel(draw) : "");
 	}
 
 	private onCorrectPuzzleMove(idx: number): void {
@@ -1104,6 +1081,7 @@ export class PgnViewer {
 	}
 
 	private startDrillRun(): void {
+		this.drillRuns.next();
 		this.drillComplete = false;
 		this.drillCursor = { line: this.mainlineMoves, idx: 0 };
 		this.drillPath = [];
@@ -1133,14 +1111,14 @@ export class PgnViewer {
 			return;
 		}
 		this.boardManager.disablePuzzleInput();
-		this.later(() => {
+		this.later(this.drillRuns.guard(() => {
 			if (!this.drillMode || this.drillComplete) return;
 			const reply = pickChoice(choices, Math.random);
 			if (!reply) return;
 			if (choices.length > 1) this.noteDrillLine(reply, choices);
 			this.playDrillChoice(reply);
 			this.continueDrill();
-		}, 500);
+		}), 500);
 	}
 
 	private handleDrillMove(from: string, to: string): void {
@@ -1160,11 +1138,11 @@ export class PgnViewer {
 		this.boardManager.flashWrong();
 		this.boardManager.showWrongArrow(from, to);
 		this.boardManager.disablePuzzleInput();
-		this.later(() => {
+		this.later(this.drillRuns.guard(() => {
 			this.boardManager.clearWrongArrow();
 			this.resetBoardPosition();
 			if (this.drillMode && !this.drillComplete) this.enablePuzzleInput();
-		}, 800);
+		}), 800);
 	}
 
 	private playDrillChoice(choice: DrillChoice): void {
@@ -1431,7 +1409,13 @@ export class PgnViewer {
 		}
 	}
 
+	// What a copy button needs from the viewer: its timer, and whether it is still open.
+	private copyHooks() {
+		return { schedule: (fn: () => void, ms: number) => this.later(fn, ms), alive: () => !this.destroyed };
+	}
+
 	private later(fn: () => void, ms: number): void {
+		if (this.destroyed) return;
 		const id = window.setTimeout(() => {
 			this.timers.delete(id);
 			fn();
@@ -1440,6 +1424,7 @@ export class PgnViewer {
 	}
 
 	destroy(): void {
+		this.destroyed = true;
 		this.stopAutoPlay();
 		for (const id of this.timers) window.clearTimeout(id);
 		this.timers.clear();

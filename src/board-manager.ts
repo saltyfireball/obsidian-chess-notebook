@@ -9,7 +9,8 @@ import type { ArrowType } from "cm-chessboard/src/Chessboard.js";
 import { Markers } from "cm-chessboard/src/extensions/markers/Markers.js";
 import { Arrows } from "cm-chessboard/src/extensions/arrows/Arrows.js";
 import { Svg } from "cm-chessboard/src/lib/Svg.js";
-import { PIECES_SVG, MARKERS_SVG, ARROWS_SVG } from "./sprites";
+import { PIECES_SVG, MARKERS_SVG, ARROWS_SVG, DEFS_SVG } from "./sprites";
+import { checkedKingSquare } from "./check";
 import { arrowMarkerId } from "./arrow-id";
 import { getPieceSet, replacePiecesInContainer } from "./fan-pieces";
 import {
@@ -21,6 +22,7 @@ import {
 	WRONG_ARROW,
 	SHAPE_ARROWS,
 	SHAPE_SQUARES,
+	CHECK_MARKER,
 	isLightSquare,
 } from "./types";
 import type { ChessSettings } from "./types";
@@ -32,7 +34,7 @@ interface MoveInputEvent {
 	squareTo: string;
 }
 
-const SPRITE_IDS = ["cm-chessboard-sprite", "cm-chessboard-markers", "cm-chessboard-arrows"];
+const SPRITE_IDS = ["cm-chessboard-sprite", "cm-chessboard-markers", "cm-chessboard-arrows", "sfb-chess-defs"];
 
 // Documents holding the sprites: the main window plus any popout that has
 // rendered a board. <use href="#wk"> resolves only within its own document.
@@ -64,6 +66,7 @@ export function injectSprites(doc: Document): void {
 	injectSprite(doc, SPRITE_IDS[0], PIECES_SVG);
 	injectSprite(doc, SPRITE_IDS[1], MARKERS_SVG);
 	injectSprite(doc, SPRITE_IDS[2], ARROWS_SVG);
+	injectSprite(doc, SPRITE_IDS[3], DEFS_SVG);
 	spriteDocs.add(doc);
 }
 
@@ -102,6 +105,7 @@ export class BoardManager {
 	private pieceSetName: string | null = null;
 	private timers = new Set<number>();
 	private shapesShown = false;
+	private checkSquare: string | null = null;
 
 	constructor(
 		container: HTMLElement,
@@ -139,6 +143,7 @@ export class BoardManager {
 			],
 		});
 
+		this.showCheck(fen || FEN.start);
 		this.replacePieces();
 		// Catch late redraws from resize observer on initial load
 		if (this.pieceSetName) {
@@ -165,10 +170,21 @@ export class BoardManager {
 
 	setPosition(fen: string, animated: boolean = true): Promise<void> {
 		const p = this.board.setPosition(fen, animated);
+		this.showCheck(fen);
 		if (this.pieceSetName) {
 			void p.then(() => this.replacePieces());
 		}
 		return p;
+	}
+
+	// Marks the king of the side to move when it is in check, and clears the
+	// mark left by the previous position.
+	private showCheck(fen: string): void {
+		const square = checkedKingSquare(fen);
+		if (square === this.checkSquare) return;
+		if (this.checkSquare) this.board.removeMarkers(CHECK_MARKER);
+		if (square) this.board.addMarker(CHECK_MARKER, square);
+		this.checkSquare = square;
 	}
 
 	highlightLastMove(from: string, to: string): void {

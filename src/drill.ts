@@ -14,18 +14,32 @@ export interface DrillChoice {
 	main: boolean;
 }
 
-// The moves the PGN gives from the cursor: the line's own next move first,
-// then the first move of each variation on it. A variation's MoveNode list
-// starts with the alternative to line[idx].
+// The moves the PGN gives from the cursor, all by the side to move: the
+// line's own next move first, then every alternative to it. A variation on a
+// move by the same side replaces that move; a variation on a move by the other
+// side continues after it (1.e4 (1...c5) e5), so it is offered at the cursor
+// after its parent. Variations nested on an alternative's first move are
+// alternatives too.
 export function drillChoices(cursor: DrillCursor): DrillChoice[] {
 	const node = cursor.line[cursor.idx];
-	if (!node) return [];
-	const choices: DrillChoice[] = [{ node, next: { line: cursor.line, idx: cursor.idx + 1 }, main: true }];
-	for (const variation of node.variations) {
-		if (variation.length > 0) {
-			choices.push({ node: variation[0], next: { line: variation, idx: 1 }, main: false });
+	const prev = cursor.idx > 0 ? cursor.line[cursor.idx - 1] : null;
+	const side = prev ? (prev.color === "w" ? "b" : "w") : node?.color;
+	if (!side) return [];
+
+	const choices: DrillChoice[] = [];
+	const addVariations = (variations: MoveNode[][]): void => {
+		for (const variation of variations) {
+			const first = variation[0];
+			if (!first || first.color !== side) continue;
+			choices.push({ node: first, next: { line: variation, idx: 1 }, main: false });
+			addVariations(first.variations);
 		}
+	};
+	if (node && node.color === side) {
+		choices.push({ node, next: { line: cursor.line, idx: cursor.idx + 1 }, main: true });
+		addVariations(node.variations);
 	}
+	if (prev) addVariations(prev.variations);
 	return choices;
 }
 
@@ -39,4 +53,23 @@ export function findChoice(choices: DrillChoice[], from: string, to: string): Dr
 export function pickChoice(choices: DrillChoice[], random: () => number): DrillChoice | null {
 	if (choices.length === 0) return null;
 	return choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))];
+}
+
+// Counts drill runs so a callback timed in one run does nothing once another
+// has started (Restart) or the drill is left.
+export class DrillRuns {
+	private current = 0;
+
+	next(): void {
+		this.current++;
+	}
+
+	// fn, bound to the run it was made in: calling it later in another run is
+	// a no-op.
+	guard(fn: () => void): () => void {
+		const run = this.current;
+		return () => {
+			if (run === this.current) fn();
+		};
+	}
 }
