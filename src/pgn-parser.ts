@@ -409,6 +409,12 @@ export function extractShapes(comment: string | null): { text: string | null; sh
 	return { text: text.length > 0 ? text : null, shapes };
 }
 
+// A move whose comment was only [%cal]/[%csl] drawings: nothing shows in the
+// move list, but stepping to it draws on the board.
+export function hasDrawingsOnly(node: MoveNode): boolean {
+	return node.comment === null && (node.shapes.arrows.length > 0 || node.shapes.squares.length > 0);
+}
+
 function applyShapes(moves: MoveNode[]): void {
 	for (const move of moves) {
 		const { text, shapes } = extractShapes(move.comment);

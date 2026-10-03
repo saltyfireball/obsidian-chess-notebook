@@ -5,6 +5,7 @@ import { PgnViewer } from "./pgn-viewer";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { parseBoardSize, resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
 import { BLOCK_ALIASES, aliasType, looksLikeFen } from "./chess-format";
@@ -197,6 +198,9 @@ export default class ChessPlugin extends Plugin {
 			if (parsed.options.center) {
 				el.addClass("sfb-chess-center-wrapper");
 			}
+			// The board width, read by the stylesheet. Set every render, so
+			// removing size: from a block puts it back to the default.
+			el.setCssProps({ "--sfb-board-size": `${resolveBoardSize(parsed.options.size, this.settings.boardSize)}px` });
 
 			if (parsed.type === "fen") {
 				const fens = content
@@ -308,6 +312,7 @@ export default class ChessPlugin extends Plugin {
 			color: null,
 			notation: "san",
 			pieces: null,
+			size: null,
 			title: null,
 			white: null,
 			black: null,
@@ -356,6 +361,11 @@ export default class ChessPlugin extends Plugin {
 		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
 		if (piecesMatch) {
 			opts.pieces = piecesMatch[1].toLowerCase();
+		}
+
+		const sizeMatch = /\bsize:(\w+)/i.exec(line);
+		if (sizeMatch) {
+			opts.size = parseBoardSize(sizeMatch[1]);
 		}
 
 		const startAtMatch = /start_at:(\w+)/i.exec(line);
@@ -448,6 +458,7 @@ export default class ChessPlugin extends Plugin {
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,
+			size: inline.size ?? fence.size,
 			title: inline.title ?? fence.title,
 			white: inline.white ?? fence.white,
 			black: inline.black ?? fence.black,

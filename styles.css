@@ -168,7 +168,7 @@
 
 /* FEN viewer: just the board */
 .sfb-chess-fen {
-    max-width: 420px;
+    max-width: var(--sfb-board-size, 420px);
 }
 
 .sfb-chess-fen .sfb-chess-board-wrapper {
@@ -178,7 +178,7 @@
 
 /* PGN viewer: board + sidebar layout */
 .sfb-chess-pgn {
-    max-width: 780px;
+    max-width: calc(var(--sfb-board-size, 420px) + 360px);
 }
 
 .sfb-chess-header {
@@ -224,7 +224,7 @@
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    width: 420px;
+    width: min(var(--sfb-board-size, 420px), 100%);
 }
 
 .sfb-chess-pgn .sfb-chess-board-wrapper {
@@ -237,7 +237,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    max-height: 462px;
+    max-height: calc(var(--sfb-board-size, 420px) + 42px);
     background: var(--background-primary);
     border-left: 1px solid var(--background-modifier-border);
 }
@@ -285,7 +285,7 @@
 }
 
 .sfb-chess-move:hover {
-    background: var(--background-modifier-hover);
+    background: var(--background-modifier-active-hover);
 }
 
 .sfb-chess-move-active {
@@ -313,15 +313,17 @@
     font-style: italic;
     line-height: 1.4;
     font-family: var(--font-text);
-    transition: opacity 0.15s ease;
+    transition: color 0.15s ease;
 }
 
+/* Dim with the theme's muted text colour, not opacity: a faded accent is too
+   pale to read on a light panel. The current move's comment keeps the accent. */
 .sfb-chess-comment-dimmed {
-    opacity: 0.35;
+    color: var(--text-muted);
 }
 
 .sfb-chess-comment-active {
-    opacity: 1;
+    color: var(--text-accent);
 }
 
 /* Variation blocks */
@@ -552,6 +554,24 @@
 .cm-chessboard .markers .marker.marker-pgn-yellow { fill: rgb(230, 143, 0); opacity: 0.5; }
 .cm-chessboard .markers .marker.marker-pgn-blue { fill: rgb(0, 80, 200); opacity: 0.5; }
 
+/* Where the picked-up piece can go (puzzle and drill mode) */
+.cm-chessboard .markers .marker.marker-legal-dot {
+    fill: black;
+    opacity: 0.25;
+}
+
+.cm-chessboard .markers .marker.marker-legal-capture {
+    stroke: black;
+    stroke-width: 3px;
+    opacity: 0.25;
+}
+
+/* A king in check: a red glow on its square (gradient in DEFS_SVG). */
+.cm-chessboard .markers .marker.marker-check {
+    fill: url(#sfb-chess-check-glow);
+    opacity: 1;
+}
+
 /* ============================================================
    Hint markers
    ============================================================ */
@@ -621,6 +641,7 @@
     border: 1px solid var(--background-modifier-border);
     font-size: var(--font-ui-small);
     font-weight: 600;
+    white-space: nowrap;
     z-index: 50;
     pointer-events: none;
 }
@@ -659,6 +680,20 @@
    ============================================================ */
 
 /* Base: shared by all NAG types */
+/* A move whose comment holds only board drawings. */
+.sfb-chess-drawing-dot {
+    width: 6px;
+    height: 6px;
+    margin-left: 5px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--text-accent);
+}
+
+.sfb-chess-move-active .sfb-chess-drawing-dot {
+    background: var(--text-on-accent);
+}
+
 .sfb-chess-nag {
     display: inline-flex;
     align-items: center;

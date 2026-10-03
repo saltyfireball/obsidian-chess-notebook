@@ -78,7 +78,7 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 ### Puzzle mode
 
-Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
+Puzzle mode hides the moves. Play the next move on the board; picking up a piece puts a dot on each square it can move to (a ring on a piece it can take). A right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
 
 ![Solving the finish of the Opera Game with the help of a hint](docs/media/puzzle.gif)
 
@@ -185,6 +185,7 @@ Boards follow Obsidian's theme.
 
 The settings tab has a How to use page, a quick reference for blocks, header tags and options. It also has:
 
+- **Board size**: the default board width, small, medium or large. Override it per block with `size:`.
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 - **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all on by default). Reload Obsidian after changing one.
@@ -208,13 +209,14 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
+| `size:small\|medium\|large\|N` | Board width: `small` (300px), `medium` (420px), `large` (560px), or `N` pixels, e.g. `size:360` (default: the Board size setting) |
 | `start_at:start\|end\|N` | Initial position: the start, the end, or index N (see below) |
 | `src:path` | Read the FEN or PGN from a file in the vault, e.g. `src:"Games/Opera Game.pgn"` |
 | `title:"..."` | Title in the header bar |
 | `white:"..."`, `black:"..."` | Set or override the player names |
 | `event:"..."`, `site:"..."`, `date:"..."`, `round:"..."`, `eco:"..."`, `result:"..."` | Set or override the game details |
 
-`start_at:N` counts from zero. In a PGN it counts half-moves (single moves by either side): `start_at:0` shows the position after White's first move, `start_at:1` after Black's reply, and `start_at:4` after White's third move. In a FEN sequence, `start_at:0` is the first FEN line, `start_at:1` the second, and so on.
+`start_at:N` counts from zero. In a PGN it counts half-moves (single moves by either side): `start_at:0` shows the position after White's first move, `start_at:1` after Black's reply, and `start_at:4` after White's third move. In a FEN sequence, `start_at:0` is the first FEN line, `start_at:1` the second, and so on. For a game from the starting position, N is 2M-2 to open after White's move M and 2M-1 after Black's move M (after 6...Nf6 is `start_at:11`). A number past the end shows the last position.
 
 Header tags White, Black, Result, Event, Site, Date, Round and ECO show in the header. Placeholder values (`?`, `??`, `????.??.??`) are hidden.
 
@@ -234,14 +236,13 @@ npm test
 npm run build
 ```
 
-The README images are made by `tools/readme-media/`, which runs the plugin in a browser page with a small Obsidian stub:
+The images and GIFs in `docs/media/` are taken in the real Obsidian app by the showcase runner, a separate repo checked out next to this one as `../obsidian-plugin-showcase`. This plugin's scenes are in its `plugins/chess-notebook/scenes.mjs`. Run `npm run build` here first so `main.js` is current, then from the showcase folder:
 
 ```sh
-node tools/readme-media/build.mjs
-node tools/readme-media/capture.mjs [scene ...]
+NODE_PATH=$(npm root -g) node src/run.mjs plugins/chess-notebook/scenes.mjs [scene ...] --out ../obsidian-chess-notebook/docs/media
 ```
 
-It needs Playwright with Chromium, and ffmpeg for the GIFs.
+It opens Obsidian from /Applications against a throwaway vault and profile, so your own vaults and settings are not touched. It needs Playwright (installed globally, found through `NODE_PATH`) and ffmpeg for the GIFs. `--smoke` instead only checks that the plugin loads and renders a board.
 
 ## License
 
