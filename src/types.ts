@@ -20,6 +20,9 @@ export type ChessMode = "normal" | "puzzle" | "step" | "drill";
 
 export type Notation = "san" | "fan";
 
+// A number is a zero-based index: a mainline half-move in a PGN (0 is the
+// position after White's first move), a step in a FEN sequence. Kept as an
+// index so existing notes keep opening on the same position.
 export type StartAt = "start" | "end" | number;
 
 export interface CodeBlockOptions {
