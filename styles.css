@@ -629,6 +629,19 @@
     display: none;
 }
 
+/* Move announcements for screen readers: read out, never seen */
+.sfb-chess-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
 .sfb-chess-flash-wrong::after {
     content: "";
     position: absolute;

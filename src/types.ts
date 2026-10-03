@@ -6,6 +6,9 @@ export interface ChessSettings {
 	animationDuration: number;
 	autoPlaySpeed: number;
 	fanPieceSet: string;
+	moveSounds: boolean;
+	soundVolume: number;
+	announceMoves: boolean;
 }
 
 export const DEFAULT_SETTINGS: ChessSettings = {
@@ -14,6 +17,9 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
 	fanPieceSet: "standard",
+	moveSounds: false,
+	soundVolume: 50,
+	announceMoves: false,
 };
 
 export type ChessMode = "normal" | "puzzle" | "step" | "drill";

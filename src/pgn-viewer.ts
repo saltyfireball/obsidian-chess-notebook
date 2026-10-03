@@ -8,6 +8,8 @@ import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
 import { drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
+import { moveSpeech, START_SPEECH } from "./speech";
+import { playMoveSound, soundFor } from "./sound";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
 interface FlatMove {
@@ -81,8 +83,15 @@ export class PgnViewer {
 	private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
 	private rawPgn: string;
 
+	// Read live, so a settings change applies to boards already open.
+	private settings: ChessSettings;
+	private liveRegion: HTMLElement | null = null;
+	// Off while the board sets itself up, so opening a note is silent.
+	private feedbackReady = false;
+
 	constructor(container: HTMLElement, pgn: string, options: CodeBlockOptions, settings: ChessSettings) {
 		this.rawPgn = pgn;
+		this.settings = settings;
 		const parsed = parsePgn(pgn);
 
 		if (parsed.moves.length === 0) {
@@ -150,6 +159,10 @@ export class PgnViewer {
 		}
 		this.boardColumn = boardColumn;
 		this.buildControls(boardColumn);
+		this.liveRegion = boardColumn.createDiv({
+			cls: "sfb-chess-live",
+			attr: { role: "status", "aria-live": "polite", "aria-atomic": "true" },
+		});
 
 		const sidebar = content.createDiv({ cls: "sfb-chess-sidebar" });
 		this.movesContainer = sidebar.createDiv({ cls: "sfb-chess-moves" });
@@ -168,6 +181,19 @@ export class PgnViewer {
 		}
 
 		this.registerKeyboardShortcuts();
+		this.feedbackReady = true;
+	}
+
+	// The move just reached, read out and played when the settings ask for it;
+	// null is the start position.
+	private moveFeedback(node: MoveNode | null): void {
+		if (!this.feedbackReady) return;
+		if (this.settings.announceMoves && this.liveRegion) {
+			this.liveRegion.setText(node ? moveSpeech(node.san, node.color, node.moveNumber) : START_SPEECH);
+		}
+		if (node && this.settings.moveSounds) {
+			playMoveSound(soundFor(node.san), this.settings.soundVolume);
+		}
 	}
 
 	private registerKeyboardShortcuts(): void {
@@ -1240,6 +1266,7 @@ export class PgnViewer {
 
 		this.currentMoveId = id;
 		this.showBoardAt(flat);
+		this.moveFeedback(flat.node);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.scrollToActiveMove();
@@ -1260,6 +1287,7 @@ export class PgnViewer {
 		if (this.drillRunning()) return;
 		this.currentMoveId = null;
 		this.showBoardAt(null);
+		this.moveFeedback(null);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.movesContainer.scrollTop = 0;

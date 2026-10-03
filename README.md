@@ -167,12 +167,23 @@ Boards follow Obsidian's theme.
 
 ![The Opera Game in the light theme](docs/media/light-theme.png)
 
+### Sound and screen readers
+
+Both are off by default and turned on in the settings.
+
+- **Move sounds** play a short tone for each move and a lower one for captures, at the volume you set. The tones are made on the fly, with no audio files and no network.
+- **Announce moves** has screen readers read out each move as you step through a game, for example "12. Nf3, knight to f3" or "5... exd4, pawn takes d4", including castling, promotion, check and mate.
+
+Every board also labels its squares for screen readers with what stands on them, for example "e4, white knight" or "a3, empty".
+
 ### Settings
 
-The settings tab has a How to use page, a quick reference for blocks, header tags and options. It also has:
+The settings tab has a How to use page, a quick reference for blocks, header tags, options, and sound and accessibility. It also has:
 
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
+- **Move sounds** and **Sound volume**: a tone for each move and capture (off by default).
+- **Announce moves**: read each move out to screen readers (off by default).
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
 <img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">

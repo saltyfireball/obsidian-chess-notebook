@@ -5,6 +5,7 @@ import { PgnViewer } from "./pgn-viewer";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { closeSounds } from "./sound";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
 
@@ -99,6 +100,7 @@ export default class ChessPlugin extends Plugin {
 			child.unload();
 		}
 		removeSprites();
+		closeSounds();
 		this.fileCache.clear();
 		this.fileBoundBlocks.clear();
 		this.blockChildren.clear();
