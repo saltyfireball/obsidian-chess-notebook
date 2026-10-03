@@ -5,6 +5,7 @@ import {
 	formatClock,
 	hasEvalClock,
 	latestEvalClock,
+	linePath,
 	parseClock,
 	parseEval,
 	pathTo,
@@ -35,6 +36,10 @@ describe("parseClock and formatClock", () => {
 		expect(formatClock(180)).toBe("3:00");
 		expect(formatClock(3723.4)).toBe("1:02:03");
 		expect(formatClock(9.8)).toBe("0:09.8");
+		expect(formatClock(4.6)).toBe("0:04.6");
+		expect(formatClock(7.3)).toBe("0:07.3");
+		expect(formatClock(parseClock("0:00:05.2")!)).toBe("0:05.2");
+		expect(formatClock(59.99)).toBe("0:59");
 		expect(formatClock(0)).toBe("0:00");
 	});
 });
@@ -90,16 +95,58 @@ describe("parsePgn with eval and clock", () => {
 	it("finds the latest eval and clocks along the main line and into a variation", () => {
 		expect(latestEvalClock(pathTo(moves, "m-2"))).toEqual({
 			evaluation: { kind: "cp", pawns: 0.3 },
+			stale: true,
 			white: 175,
 			black: 179,
 		});
-		const varPath = pathTo(moves, "m-2v0-1");
+		const { path: varPath, lineStart } = linePath(moves, "m-2v0-1");
 		expect(varPath.map((m) => m.san)).toEqual(["e4", "e5", "Qh5", "Nc6"]);
-		expect(latestEvalClock(varPath)).toEqual({ evaluation: { kind: "cp", pawns: -0.5 }, white: 180, black: 170 });
+		expect(lineStart).toBe(2);
+		expect(latestEvalClock(varPath, lineStart)).toEqual({
+			evaluation: { kind: "cp", pawns: -0.5 },
+			stale: true,
+			white: 180,
+			black: 170,
+		});
 	});
 
 	it("reports whether a game carries either", () => {
 		expect(hasEvalClock(moves)).toEqual({ evaluation: true, clock: true });
 		expect(hasEvalClock(parsePgn("1.e4 {Just text} e5 *").moves)).toEqual({ evaluation: false, clock: false });
+	});
+});
+
+describe("evals in variations", () => {
+	// 2... d6 replaces 2... Nc6 (#5); 3. Bc4 continues after it inside a
+	// nested line; 2. d4 has an eval of its own.
+	const moves = parsePgn(
+		`1. e4 { [%eval 0.2] } e5 { [%eval 0.3] } 2. Nf3 (2. d4 { [%eval 0.5] } exd4)
+		2... Nc6 { [%eval #5] } (2... d6 3. Bc4 { [%eval 1.1] } (3. d4) Be7) 3. Bb5 *`,
+	).moves;
+	const evalAt = (id: string) => {
+		const { path, lineStart } = linePath(moves, id);
+		const { evaluation, stale } = latestEvalClock(path, lineStart);
+		return { evaluation, stale };
+	};
+
+	it("does not carry the eval of the line a variation branched from", () => {
+		expect(evalAt("m-3v0-0")).toEqual({ evaluation: null, stale: false });
+		expect(evalAt("m-3v0-1v0-0")).toEqual({ evaluation: null, stale: false });
+	});
+
+	it("marks an eval carried from an earlier move of the same line as stale", () => {
+		expect(evalAt("m-2v0-0")).toEqual({ evaluation: { kind: "cp", pawns: 0.5 }, stale: false });
+		expect(evalAt("m-2v0-1")).toEqual({ evaluation: { kind: "cp", pawns: 0.5 }, stale: true });
+		expect(evalAt("m-3v0-2")).toEqual({ evaluation: { kind: "cp", pawns: 1.1 }, stale: true });
+		expect(evalAt("m-3")).toEqual({ evaluation: { kind: "mate", moves: 5, white: true }, stale: false });
+		expect(evalAt("m-4")).toEqual({ evaluation: { kind: "mate", moves: 5, white: true }, stale: true });
+	});
+
+	it("gives [%eval #0] to the side that just mated", () => {
+		const mated = parsePgn("1. f3 e5 2. g4 Qh4# { [%eval #0] } 0-1").moves;
+		const { evaluation } = latestEvalClock(pathTo(mated, "m-3"));
+		expect(evaluation).toEqual({ kind: "mate", moves: 0, white: false });
+		expect(whiteShare(evaluation)).toBe(0);
+		expect(evalLabel(evaluation!)).toBe("#0");
 	});
 });
