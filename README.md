@@ -95,6 +95,16 @@ Puzzle mode hides the moves. Play the next move on the board; a right move is pl
 
 You can also switch any board into puzzle mode with the puzzle button under it.
 
+### Drill mode
+
+Drill mode is for practising an opening. With `mode:drill color:white` (or `color:black`) you play your side and the board plays the other, picking its replies from the main line and the variations, so each run can go down a different line. A move the PGN does not have is shown as a red arrow and undone. Where the PGN gives more than one move for your side, any of them is accepted and the line the run follows is shown under the board. Hint works as in puzzle mode, the reset button starts a new run, and when the line runs out you get the same report as a puzzle, with the moves list shown again. Nothing is written back to the note.
+
+````markdown
+```chessboard type:pgn mode:drill color:white title:"Italian or Ruy Lopez"
+1.e4 e5 2.Nf3 Nc6 3.Bc4 (3.Bb5 a6 4.Ba4) Bc5 (3...Nf6 4.Ng5) 4.c3 *
+```
+````
+
 ### Step mode and the keyboard
 
 Step mode hides the moves you have not reached yet, so the game unfolds as you step forward, comments included. Turn it on with `mode:step` or the step button.
@@ -178,7 +188,8 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | Option | Description |
 | --- | --- |
 | `center:true\|false` | Center the board horizontally (default: true) |
-| `mode:normal\|puzzle\|step` | Start in the given mode |
+| `mode:normal\|puzzle\|step\|drill` | Start in the given mode |
+| `color:white\|black` | The side you play in drill mode (default: White, or Black with `flipped:true`) |
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |

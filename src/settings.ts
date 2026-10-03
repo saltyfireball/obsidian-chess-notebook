@@ -194,7 +194,8 @@ function renderReference(containerEl: HTMLElement): void {
 	const optsTbody = optsTable.createEl("tbody");
 	const optRows: [string, string][] = [
 		["center:true|false", "Center the board horizontally (default: true)"],
-		["mode:normal|puzzle|step", "Start in specified mode"],
+		["mode:normal|puzzle|step|drill", "Start in specified mode"],
+		["color:white|black", "Side you play in drill mode"],
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],

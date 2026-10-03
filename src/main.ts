@@ -280,6 +280,7 @@ export default class ChessPlugin extends Plugin {
 			mode: "normal",
 			startAt: "start",
 			flipped: false,
+			color: null,
 			notation: "san",
 			pieces: null,
 			title: null,
@@ -309,12 +310,17 @@ export default class ChessPlugin extends Plugin {
 			opts.flipped = true;
 		}
 
-		const modeMatch = /mode:(normal|puzzle|step)/i.exec(line);
+		const modeMatch = /mode:(normal|puzzle|step|drill)/i.exec(line);
 		if (modeMatch) {
 			const modeVal = modeMatch[1].toLowerCase();
-			if (modeVal === "puzzle" || modeVal === "step") {
+			if (modeVal === "puzzle" || modeVal === "step" || modeVal === "drill") {
 				opts.mode = modeVal;
 			}
+		}
+
+		const colorMatch = /color:(white|black)/i.exec(line);
+		if (colorMatch) {
+			opts.color = colorMatch[1].toLowerCase() === "black" ? "b" : "w";
 		}
 
 		const notationMatch = /notation:(san|fan)/i.exec(line);
@@ -414,6 +420,7 @@ export default class ChessPlugin extends Plugin {
 			mode: inline.mode !== "normal" ? inline.mode : fence.mode,
 			startAt: inline.startAt !== "start" ? inline.startAt : fence.startAt,
 			flipped: inline.flipped || fence.flipped,
+			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,
 			title: inline.title ?? fence.title,

@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	fanPieceSet: "standard",
 };
 
-export type ChessMode = "normal" | "puzzle" | "step";
+export type ChessMode = "normal" | "puzzle" | "step" | "drill";
 
 export type Notation = "san" | "fan";
 
@@ -27,6 +27,8 @@ export interface CodeBlockOptions {
 	mode: ChessMode;
 	startAt: StartAt;
 	flipped: boolean;
+	// The side you play in drill mode; null: White, or Black when flipped.
+	color: "w" | "b" | null;
 	notation: Notation;
 	pieces: string | null;
 	title: string | null;
@@ -53,6 +55,9 @@ export const HINT_FROM_DARK: MarkerType = {
 
 // The last hint step: the move to find, as an arrow.
 export const HINT_ARROW: ArrowType = { class: "arrow-hint" };
+
+// A drill move the PGN does not contain, shown before it is undone.
+export const WRONG_ARROW: ArrowType = { class: "arrow-wrong" };
 
 export interface ParsedCodeBlock {
 	type: "fen" | "pgn";

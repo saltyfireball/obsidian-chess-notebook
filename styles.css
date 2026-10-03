@@ -575,8 +575,24 @@
     stroke-linecap: round;
 }
 
-/* The comment on the move to find, shown by the first Hint press. */
-.sfb-chess-hint-comment {
+.cm-chessboard .arrow-wrong .arrow-head {
+    fill: rgba(200, 50, 50, 0.9);
+    fill-rule: nonzero;
+}
+.cm-chessboard .arrow-wrong .arrow-line {
+    stroke: rgba(200, 50, 50, 0.9);
+    stroke-linecap: round;
+}
+
+/* Drill mode hides the moves until the drill is over. */
+.sfb-chess-moves.sfb-chess-moves-hidden {
+    visibility: hidden;
+}
+
+/* The comment on the move to find, shown by the first Hint press, and the
+   line a drill run follows. */
+.sfb-chess-hint-comment,
+.sfb-chess-drill-status {
     padding: 6px 8px;
     font-size: var(--font-ui-small);
     color: var(--text-normal);
