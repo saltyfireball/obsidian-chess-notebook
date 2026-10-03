@@ -2,6 +2,7 @@ import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
 import { copyWithFeedback, ICON_FEN } from "./clipboard";
+import { createNavButton } from "./nav-button";
 import type { ChessSettings, CodeBlockOptions } from "./types";
 
 interface FenStep {
@@ -226,15 +227,15 @@ export class FenSequenceViewer {
 	private buildControls(wrapper: HTMLElement): void {
 		const controls = wrapper.createDiv({ cls: "sfb-chess-controls" });
 
-		this.createNavButton(controls, "Flip board", "M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z", () => this.boardManager.flip());
-		this.createNavButton(controls, "First position", "M6 6h2v12H6zM18 6v12l-6-6 6-6z", () => this.goToMove(0));
-		this.createNavButton(controls, "Previous position", "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z", () => this.prevMove());
-		this.createNavButton(controls, "Next position", "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z", () => this.nextMove());
-		this.createNavButton(controls, "Last position", "M16 18V6h2v12h-2zM8 18V6l6 6-6 6z", () => this.goToMove(this.steps.length - 1));
+		createNavButton(controls, "Flip board", "M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z", () => this.boardManager.flip());
+		createNavButton(controls, "First position", "M6 6h2v12H6zM18 6v12l-6-6 6-6z", () => this.goToMove(0));
+		createNavButton(controls, "Previous position", "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z", () => this.prevMove());
+		createNavButton(controls, "Next position", "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z", () => this.nextMove());
+		createNavButton(controls, "Last position", "M16 18V6h2v12h-2zM8 18V6l6 6-6 6z", () => this.goToMove(this.steps.length - 1));
 
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
-		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
+		const copyFen: HTMLElement = createNavButton(controls, "Copy FEN", ICON_FEN, () =>
 			copyWithFeedback(copyFen, this.steps[this.currentIndex].fen, "FEN", this.copyHooks()));
 	}
 
@@ -250,29 +251,6 @@ export class FenSequenceViewer {
 			fn();
 		}, ms);
 		this.timers.add(id);
-	}
-
-	private createNavButton(
-		parent: HTMLElement,
-		label: string,
-		iconPath: string,
-		handler: () => void,
-	): HTMLElement {
-		const btn = parent.createEl("button", {
-			cls: "sfb-chess-btn",
-			attr: { "aria-label": label },
-		});
-		const svg = createSvg("svg");
-		svg.setAttribute("viewBox", "0 0 24 24");
-		svg.setAttribute("width", "18");
-		svg.setAttribute("height", "18");
-		const path = createSvg("path");
-		path.setAttribute("fill", "currentColor");
-		path.setAttribute("d", iconPath);
-		svg.appendChild(path);
-		btn.appendChild(svg);
-		btn.addEventListener("click", handler);
-		return btn;
 	}
 
 	private applyStartAt(startAt: import("./types").StartAt): void {
