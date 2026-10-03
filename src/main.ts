@@ -12,12 +12,13 @@ import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
-import { parseBoardTheme, resolveBoardTheme } from "./board-themes";
+import { resolveBoardTheme } from "./board-themes";
+import { parseOptions } from "./block-options";
 import { closeSounds } from "./sound";
-import { parseBoardSize, resolveBoardSize } from "./board-size";
+import { resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
-import { BLOCK_ALIASES, aliasBlock, looksLikeFen, srcOption } from "./chess-format";
+import { BLOCK_ALIASES, aliasBlock, looksLikeFen } from "./chess-format";
 import type { BlockAlias } from "./chess-format";
 
 // The setting that turns each alias on.
@@ -420,132 +421,8 @@ export default class ChessPlugin extends Plugin {
 		return puzzles;
 	}
 
-	private parseOptions(line: string): CodeBlockOptions {
-		const opts: CodeBlockOptions = {
-			center: true,
-			mode: "normal",
-			startAt: "start",
-			flipped: false,
-			diagram: false,
-			color: null,
-			notation: "san",
-			pieces: null,
-			arrows: null,
-			squares: null,
-			board: null,
-			size: null,
-			title: null,
-			white: null,
-			black: null,
-			event: null,
-			site: null,
-			date: null,
-			round: null,
-			eco: null,
-			result: null,
-			src: null,
-			game: null,
-		};
-
-		opts.src = srcOption(line);
-
-		const gameMatch = /game:(?:"([^"]+)"|(\d+))/i.exec(line);
-		if (gameMatch) {
-			opts.game = gameMatch[1] ?? parseInt(gameMatch[2]);
-		}
-
-		const boolMatch = /center:(true|false)/i.exec(line);
-		if (boolMatch && boolMatch[1].toLowerCase() === "false") {
-			opts.center = false;
-		}
-
-		if (/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i.test(line)) {
-			opts.diagram = true;
-		}
-
-		const flippedMatch = /flipped:(true|false)/i.exec(line);
-		if (flippedMatch && flippedMatch[1].toLowerCase() === "true") {
-			opts.flipped = true;
-		}
-
-		const modeMatch = /mode:(normal|puzzle|step|drill)/i.exec(line);
-		if (modeMatch) {
-			const modeVal = modeMatch[1].toLowerCase();
-			if (modeVal === "puzzle" || modeVal === "step" || modeVal === "drill") {
-				opts.mode = modeVal;
-			}
-		}
-
-		const colorMatch = /color:(white|black)/i.exec(line);
-		if (colorMatch) {
-			opts.color = colorMatch[1].toLowerCase() === "black" ? "b" : "w";
-		}
-
-		const notationMatch = /notation:(san|fan)/i.exec(line);
-		if (notationMatch && notationMatch[1].toLowerCase() === "fan") {
-			opts.notation = "fan";
-		}
-
-		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
-		if (piecesMatch) {
-			opts.pieces = piecesMatch[1].toLowerCase();
-		}
-
-		const arrowsMatch = /(?:^|\s)arrows:(?:"([^"]*)"|(\S+))/i.exec(line);
-		if (arrowsMatch) {
-			opts.arrows = arrowsMatch[1] ?? arrowsMatch[2];
-		}
-
-		const squaresMatch = /(?:^|\s)squares:(?:"([^"]*)"|(\S+))/i.exec(line);
-		if (squaresMatch) {
-			opts.squares = squaresMatch[1] ?? squaresMatch[2];
-		}
-
-		const boardMatch = /(?:^|\s)board:([\w-]+)/i.exec(line);
-		if (boardMatch) {
-			opts.board = parseBoardTheme(boardMatch[1]);
-		}
-
-		const sizeMatch = /\bsize:(\w+)/i.exec(line);
-		if (sizeMatch) {
-			opts.size = parseBoardSize(sizeMatch[1]);
-		}
-
-		const startAtMatch = /start_at:(\w+)/i.exec(line);
-		if (startAtMatch) {
-			const val = startAtMatch[1].toLowerCase();
-			if (val === "end") {
-				opts.startAt = "end";
-			} else if (val !== "start") {
-				const num = parseInt(val);
-				if (!isNaN(num) && num >= 0) {
-					opts.startAt = num;
-				}
-			}
-		}
-
-		const quotedPattern = /(\w+):"([^"]*)"/g;
-		let match: RegExpExecArray | null = quotedPattern.exec(line);
-		while (match !== null) {
-			const key = match[1].toLowerCase();
-			const value = match[2];
-			if (key === "title") opts.title = value;
-			else if (key === "white") opts.white = value;
-			else if (key === "black") opts.black = value;
-			else if (key === "event") opts.event = value;
-			else if (key === "site") opts.site = value;
-			else if (key === "date") opts.date = value;
-			else if (key === "round") opts.round = value;
-			else if (key === "eco") opts.eco = value;
-			else if (key === "result") opts.result = value;
-			match = quotedPattern.exec(line);
-		}
-
-		return opts;
-	}
-
 	private parseCodeBlock(source: string, fenceLine: string): ParsedCodeBlock | null {
-		const fenceOpts = this.parseOptions(fenceLine);
+		const fenceOpts = parseOptions(fenceLine);
 		const fenceLower = fenceLine.toLowerCase();
 
 		const lines = source.split("\n");
@@ -556,7 +433,7 @@ export default class ChessPlugin extends Plugin {
 		// title keeps its case.
 		if (fenceLower.includes("type:fen") || firstLine.includes("type:fen")) {
 			const contentLines = firstLine.includes("type:fen") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:fen") ? this.parseOptions(header) : null;
+			const firstLineOpts = firstLine.includes("type:fen") ? parseOptions(header) : null;
 			return {
 				type: "fen",
 				content: contentLines.join("\n"),
@@ -566,7 +443,7 @@ export default class ChessPlugin extends Plugin {
 
 		if (fenceLower.includes("type:pgn") || firstLine.includes("type:pgn")) {
 			const contentLines = firstLine.includes("type:pgn") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:pgn") ? this.parseOptions(header) : null;
+			const firstLineOpts = firstLine.includes("type:pgn") ? parseOptions(header) : null;
 			return {
 				type: "pgn",
 				content: contentLines.join("\n"),

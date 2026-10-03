@@ -77,7 +77,7 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 ### Arrows and squares on a FEN diagram
 
-`arrows:` and `squares:` draw on a FEN board, for book-style diagrams without a PGN. They use the same colours as `[%cal]` and `[%csl]` in PGN comments: put `G` (green, the default), `R` (red), `Y` (yellow) or `B` (blue) in front of an entry, or the colour name after a colon (`f7:red`). Separate entries with commas. In a FEN sequence the drawings stay for every position.
+`arrows:` and `squares:` draw on a FEN board, for book-style diagrams without a PGN. They use the same colours as `[%cal]` and `[%csl]` in PGN comments: put `G` (green, the default), `R` (red), `Y` (yellow) or `B` (blue) in front of an entry, or the colour name after a colon (`f7:red`). Separate entries with commas. Entries that do not parse are skipped, and the developer console names them. In a FEN sequence the drawings stay for every position.
 
 <img src="docs/media/fen-shapes.png" width="420" alt="A FEN diagram with a red arrow onto f7, a green arrow and highlighted squares">
 

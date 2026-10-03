@@ -1,3 +1,5 @@
+import { execOutsideQuotes } from "./option-line";
+
 // Tells a FEN from a PGN, for the chess code block alias and anything else
 // that gets text without a type:.
 
@@ -37,25 +39,29 @@ export function aliasType(alias: BlockAlias, source: string, src: string | null 
 }
 
 // The src: option's file path on a fence or header line, null without one.
+// A src: inside another option's quoted value does not count.
 export function srcOption(line: string): string | null {
-	const m = /src:(?:"([^"]+)"|(\S+))/i.exec(line);
+	const m = execOutsideQuotes(/src:(?:"([^"]+)"|(\S+))/i, line);
 	return m ? m[1] ?? m[2] : null;
 }
 
 const TYPE_OPTION = /type:(fen|pgn)/i;
 
 // An alias block as a chessboard block: its fence line and text with the
-// type: made explicit. A type: on the fence line or the block's first line
-// wins over detection. A src: header on the first line (with no type:) gets
-// the type put on that line, so the header is still read as options.
+// type: made explicit. A type: on the block's first line wins over
+// detection, and so does one on the fence line. A src: header on the first
+// line (with no type:) gets the type put on that line, so the header is
+// still read as options: the fence's type when it has one, else detected.
 export function aliasBlock(alias: BlockAlias, fenceLine: string, source: string): { fenceLine: string; source: string } {
 	const lines = source.split("\n");
 	const first = lines[0] ?? "";
-	if (TYPE_OPTION.test(fenceLine) || TYPE_OPTION.test(first)) return { fenceLine, source };
+	if (TYPE_OPTION.test(first)) return { fenceLine, source };
+	const fenceType = TYPE_OPTION.exec(fenceLine)?.[1].toLowerCase() as ChessFormat | undefined;
 	const header = srcOption(first) !== null;
+	if (fenceType && !header) return { fenceLine, source };
 	const body = header ? lines.slice(1).join("\n") : source;
 	// The header's src: wins over the fence's, as it does in parseCodeBlock.
-	const type = aliasType(alias, body, srcOption(first) ?? srcOption(fenceLine));
+	const type = fenceType ?? aliasType(alias, body, srcOption(first) ?? srcOption(fenceLine));
 	if (header) return { fenceLine, source: [`type:${type} ${first.trim()}`, ...lines.slice(1)].join("\n") };
 	return { fenceLine: `type:${type} ${fenceLine}`.trim(), source };
 }
