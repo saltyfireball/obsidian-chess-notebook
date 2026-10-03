@@ -4,6 +4,7 @@ import { parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
 import { drawReason, positionKey } from "./draw";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
+import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
@@ -43,6 +44,9 @@ export class PgnViewer {
 	private stepMode = false;
 	private hintState: 0 | 1 | 2 = 0;
 	private puzzleHighWater = -1;
+	private puzzleTally = new PuzzleTally();
+	private puzzleReport: HTMLElement | null = null;
+	private boardColumn: HTMLElement | null = null;
 	private puzzleBtn: HTMLElement | null = null;
 	private stepBtn: HTMLElement | null = null;
 	private hintBtn: HTMLElement | null = null;
@@ -127,6 +131,7 @@ export class PgnViewer {
 			this.boardManager.flip();
 			this.puzzleColor = "b";
 		}
+		this.boardColumn = boardColumn;
 		this.buildControls(boardColumn);
 
 		const sidebar = content.createDiv({ cls: "sfb-chess-sidebar" });
@@ -657,6 +662,7 @@ export class PgnViewer {
 		this.puzzleMode = true;
 		this.puzzleComplete = false;
 		this.hintState = 0;
+		this.clearPuzzleReport();
 		this.puzzleBtn?.addClass("sfb-chess-toggle-active");
 		this.stepBtn?.addClass("sfb-chess-btn-hidden");
 		this.resetBtn?.removeClass("sfb-chess-btn-hidden");
@@ -672,6 +678,7 @@ export class PgnViewer {
 		this.puzzleMode = false;
 		this.puzzleComplete = false;
 		this.hintState = 0;
+		this.clearPuzzleReport();
 		this.puzzleBtn?.removeClass("sfb-chess-toggle-active");
 		this.stepBtn?.removeClass("sfb-chess-btn-hidden");
 		this.resetBtn?.addClass("sfb-chess-btn-hidden");
@@ -702,6 +709,7 @@ export class PgnViewer {
 		this.puzzleComplete = false;
 		this.puzzleHighWater = -1;
 		this.hintState = 0;
+		this.clearPuzzleReport();
 		this.hintBtn?.removeClass("sfb-chess-toggle-active");
 		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
 		this.boardManager.clearHintMarkers();
@@ -898,6 +906,7 @@ export class PgnViewer {
 			return;
 		}
 
+		this.puzzleTally.recordWrong(nextIdx);
 		this.boardManager.flashWrong();
 		this.boardManager.disablePuzzleInput();
 		this.later(() => {
@@ -943,6 +952,7 @@ export class PgnViewer {
 	private onCorrectPuzzleMove(idx: number): void {
 		const id = "m-" + idx;
 		if (idx > this.puzzleHighWater) this.puzzleHighWater = idx;
+		this.puzzleTally.recordCorrect(idx);
 		this.hintState = 0;
 		this.hintBtn?.removeClass("sfb-chess-toggle-active");
 		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
@@ -972,6 +982,7 @@ export class PgnViewer {
 	private showPuzzleComplete(): void {
 		this.puzzleComplete = true;
 		this.boardManager.disablePuzzleInput();
+		this.showPuzzleReport();
 
 		const boardWrapper = this.wrapper.querySelector(".sfb-chess-board-wrapper");
 		if (!boardWrapper) return;
@@ -985,6 +996,32 @@ export class PgnViewer {
 
 		banner.addEventListener("click", dismiss);
 		this.later(dismiss, 3000);
+	}
+
+	// The end-of-puzzle report goes under the controls; each missed move in it
+	// jumps the board to that move.
+	private showPuzzleReport(): void {
+		this.clearPuzzleReportEl();
+		if (!this.boardColumn) return;
+		this.puzzleReport = renderPuzzleReport(
+			this.boardColumn,
+			this.puzzleTally,
+			(idx) => {
+				const node = this.mainlineMoves[idx];
+				return moveLabel(node.moveNumber, node.color, node.san);
+			},
+			(idx) => this.goToMoveById("m-" + idx),
+		);
+	}
+
+	private clearPuzzleReport(): void {
+		this.puzzleTally.reset();
+		this.clearPuzzleReportEl();
+	}
+
+	private clearPuzzleReportEl(): void {
+		this.puzzleReport?.remove();
+		this.puzzleReport = null;
 	}
 
 	private showHint(): void {

@@ -760,6 +760,50 @@
 }
 
 /* ============================================================
+   End-of-puzzle report
+   ============================================================ */
+
+.sfb-chess-puzzle-report {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    background: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-puzzle-report-stats {
+    display: flex;
+    gap: 12px;
+}
+
+.sfb-chess-puzzle-report-moves {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+}
+
+.sfb-chess-puzzle-report-move {
+    padding: 0 6px;
+    font-family: var(--font-monospace);
+    font-size: inherit;
+    color: var(--text-accent);
+    background: transparent;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.sfb-chess-puzzle-report-move:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* ============================================================
    Focus-visible styles
    ============================================================ */
 
