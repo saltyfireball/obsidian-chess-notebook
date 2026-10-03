@@ -219,13 +219,9 @@ npm test
 npm run build
 ```
 
-The images and GIFs in `docs/media/` are taken in the real Obsidian app by the showcase runner, a separate repo checked out next to this one as `../obsidian-plugin-showcase`. This plugin's scenes are in its `plugins/chess-notebook/scenes.mjs`. Run `npm run build` here first so `main.js` is current, then from the showcase folder:
+To try a change in Obsidian, copy `main.js`, `manifest.json` and `styles.css` into `<your vault>/.obsidian/plugins/chess-notebook/` and reload the plugin.
 
-```sh
-NODE_PATH=$(npm root -g) node src/run.mjs plugins/chess-notebook/scenes.mjs [scene ...] --out ../obsidian-chess-notebook/docs/media
-```
-
-It opens Obsidian from /Applications against a throwaway vault and profile, so your own vaults and settings are not touched. It needs Playwright (installed globally, found through `NODE_PATH`) and ffmpeg for the GIFs. `--smoke` instead only checks that the plugin loads and renders a board.
+The images and GIFs in `docs/media/` are captured in the real Obsidian app with the maintainer's own capture tool, which is not part of this repo. To change one, open an issue or attach your own screenshot to the pull request.
 
 ## License
 
