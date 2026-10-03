@@ -2,20 +2,14 @@ import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
 import { hasDrawingsOnly, parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
-import { drawReason, positionKey } from "./draw";
+import { drawLabel, drawReason } from "./draw";
+import { flattenMoves, type FlatMove } from "./flat-moves";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
-
-interface FlatMove {
-	node: MoveNode;
-	id: string;
-	// Times the position after this move has occurred in its line, itself included.
-	repeats: number;
-}
 
 const ICON_PUZZLE = "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3.8h1.5c1.38 0 2.5 1.12 2.5 2.5S4.88 15.8 3.5 15.8H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z";
 const ICON_STEP = "M21 13a9 9 0 1 1-9-9M21 3v5h-5";
@@ -114,8 +108,7 @@ export class PgnViewer {
 		this.notation = options.notation;
 		this.pieceSetName = resolvePieceSet(options.pieces ?? settings.fanPieceSet);
 
-		this.allFlatMoves = [];
-		this.flattenMoves(parsed.moves, "m", [positionKey(this.startingFen)]);
+		this.allFlatMoves = flattenMoves(parsed.moves, this.startingFen);
 
 		this.wrapper = container.createDiv({ cls: "sfb-chess-container sfb-chess-pgn" });
 		this.wrapper.setAttribute("tabindex", "0");
@@ -203,24 +196,6 @@ export class PgnViewer {
 			}
 		};
 		this.wrapper.addEventListener("keydown", this.keyboardHandler);
-	}
-
-	// path holds the position keys of the line so far. A variation replaces its
-	// parent move, so it continues from the path before that move.
-	private flattenMoves(moves: MoveNode[], prefix: string, path: string[]): void {
-		const startLength = path.length;
-		for (let i = 0; i < moves.length; i++) {
-			const node = moves[i];
-			const id = prefix + "-" + i;
-			const key = positionKey(node.fen);
-			const repeats = path.filter((k) => k === key).length + 1;
-			this.allFlatMoves.push({ node, id, repeats });
-			for (let v = 0; v < node.variations.length; v++) {
-				this.flattenMoves(node.variations[v], id + "v" + v, path);
-			}
-			path.push(key);
-		}
-		path.length = startLength;
 	}
 
 	private buildHeaders(raw: Record<string, string>): PgnHeaders {
@@ -969,9 +944,9 @@ export class PgnViewer {
 	}
 
 	private updateDrawBadge(fen: string, repeats: number): void {
-		const reason = drawReason(fen, repeats);
-		this.drawBadge.toggleClass("is-hidden", reason === null);
-		this.drawBadge.setText(reason ? "1/2 " + reason : "");
+		const draw = drawReason(fen, repeats);
+		this.drawBadge.toggleClass("is-hidden", draw === null);
+		this.drawBadge.setText(draw ? drawLabel(draw) : "");
 	}
 
 	private onCorrectPuzzleMove(idx: number): void {

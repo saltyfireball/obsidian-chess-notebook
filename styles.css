@@ -621,6 +621,7 @@
     border: 1px solid var(--background-modifier-border);
     font-size: var(--font-ui-small);
     font-weight: 600;
+    white-space: nowrap;
     z-index: 50;
     pointer-events: none;
 }
