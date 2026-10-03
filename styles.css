@@ -643,6 +643,20 @@
    ============================================================ */
 
 /* Base: shared by all NAG types */
+/* A move whose comment holds only board drawings. */
+.sfb-chess-drawing-dot {
+    width: 6px;
+    height: 6px;
+    margin-left: 5px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--text-accent);
+}
+
+.sfb-chess-move-active .sfb-chess-drawing-dot {
+    background: var(--text-on-accent);
+}
+
 .sfb-chess-nag {
     display: inline-flex;
     align-items: center;

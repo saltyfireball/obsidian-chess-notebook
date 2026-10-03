@@ -1,6 +1,6 @@
 import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
-import { parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
+import { hasDrawingsOnly, parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
 import { drawReason, positionKey } from "./draw";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
@@ -414,6 +414,13 @@ export class PgnViewer {
 			});
 			nagSpan.setAttribute("title", tooltip);
 			nagSpan.setAttribute("aria-label", tooltip);
+		}
+
+		if (hasDrawingsOnly(node)) {
+			span.createSpan({
+				cls: "sfb-chess-drawing-dot",
+				attr: { title: "Has board drawings", "aria-label": "Has board drawings" },
+			});
 		}
 	}
 

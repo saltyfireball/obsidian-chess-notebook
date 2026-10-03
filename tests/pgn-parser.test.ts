@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePgn } from "../src/pgn-parser";
+import { hasDrawingsOnly, parsePgn } from "../src/pgn-parser";
 import { normalizeFen } from "../src/types";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -90,6 +90,12 @@ describe("parsePgn", () => {
 		const c5 = parsed.moves[1].variations[0][0];
 
 		expect(c5.shapes.arrows).toEqual([{ from: "g1", to: "f3", color: "G" }]);
+	});
+
+	it("tells moves with drawings and no text apart", () => {
+		const parsed = parsePgn("1.e4 {[%cal Gg1f3]} e5 {Solid. [%csl Re5]} 2.Nf3 {Develops.} Nc6 *");
+
+		expect(parsed.moves.map(hasDrawingsOnly)).toEqual([true, false, false, false]);
 	});
 
 	it("returns no moves for text that is not a game", () => {
