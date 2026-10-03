@@ -6,6 +6,7 @@ import { drawReason, positionKey } from "./draw";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
+import { legalTargets } from "./legal-moves";
 import { drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
@@ -904,6 +905,7 @@ export class PgnViewer {
 				if (this.drillMode) this.handleDrillMove(from, to);
 				else this.handlePuzzleMove(from, to);
 			},
+			(square: string) => legalTargets(currentFen, square),
 		);
 	}
 

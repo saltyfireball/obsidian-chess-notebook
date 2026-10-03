@@ -78,7 +78,7 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 ### Puzzle mode
 
-Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
+Puzzle mode hides the moves. Play the next move on the board; picking up a piece puts a dot on each square it can move to (a ring on a piece it can take). A right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
 
 ![Solving the finish of the Opera Game with the help of a hint](docs/media/puzzle.gif)
 
@@ -171,6 +171,7 @@ Boards follow Obsidian's theme.
 
 The settings tab has a How to use page, a quick reference for blocks, header tags and options. It also has:
 
+- **Board size**: the default board width, small, medium or large. Override it per block with `size:`.
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 
@@ -193,6 +194,7 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
+| `size:small\|medium\|large\|N` | Board width: `small` (300px), `medium` (420px), `large` (560px), or `N` pixels, e.g. `size:360` (default: the Board size setting) |
 | `start_at:start\|end\|N` | Initial position: the start, the end, or index N (see below) |
 | `src:path` | Read the FEN or PGN from a file in the vault, e.g. `src:"Games/Opera Game.pgn"` |
 | `title:"..."` | Title in the header bar |
