@@ -8,7 +8,7 @@ import { resolvePieceSet } from "./fan-pieces";
 import { parseBoardSize, resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
-import { BLOCK_ALIASES, aliasType, looksLikeFen } from "./chess-format";
+import { BLOCK_ALIASES, aliasBlock, looksLikeFen, srcOption } from "./chess-format";
 import type { BlockAlias } from "./chess-format";
 
 // The setting that turns each alias on.
@@ -104,13 +104,10 @@ export default class ChessPlugin extends Plugin {
 			const child = new ChessBlockChild(el, (gone) => this.forgetBlock(gone));
 			this.blockChildren.set(el, child);
 			ctx.addChild(child);
-			let fenceLine = this.extractFenceLine(el, ctx, language);
+			const fenceLine = this.extractFenceLine(el, ctx, language);
 			// An alias block is a chessboard block with its type: implied.
-			if (alias && !/type:(fen|pgn)/i.test(fenceLine)) {
-				const type = aliasType(alias, source, this.parseOptions(fenceLine).src);
-				fenceLine = `type:${type} ${fenceLine}`.trim();
-			}
-			void this.processCodeBlock(source, el, fenceLine, ctx.sourcePath);
+			const block = alias ? aliasBlock(alias, fenceLine, source) : { fenceLine, source };
+			void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
 		};
 		try {
 			this.registerMarkdownCodeBlockProcessor(language, handler);
@@ -325,10 +322,7 @@ export default class ChessPlugin extends Plugin {
 			src: null,
 		};
 
-		const srcMatch = /src:(?:"([^"]+)"|(\S+))/i.exec(line);
-		if (srcMatch) {
-			opts.src = srcMatch[1] ?? srcMatch[2];
-		}
+		opts.src = srcOption(line);
 
 		const boolMatch = /center:(true|false)/i.exec(line);
 		if (boolMatch && boolMatch[1].toLowerCase() === "false") {
@@ -406,11 +400,14 @@ export default class ChessPlugin extends Plugin {
 		const fenceLower = fenceLine.toLowerCase();
 
 		const lines = source.split("\n");
-		const firstLine = lines[0].trim().toLowerCase();
+		const header = lines[0].trim();
+		const firstLine = header.toLowerCase();
 
+		// Options are read from the header as written, so a src: path or a
+		// title keeps its case.
 		if (fenceLower.includes("type:fen") || firstLine.includes("type:fen")) {
 			const contentLines = firstLine.includes("type:fen") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:fen") ? this.parseOptions(firstLine) : null;
+			const firstLineOpts = firstLine.includes("type:fen") ? this.parseOptions(header) : null;
 			return {
 				type: "fen",
 				content: contentLines.join("\n"),
@@ -420,7 +417,7 @@ export default class ChessPlugin extends Plugin {
 
 		if (fenceLower.includes("type:pgn") || firstLine.includes("type:pgn")) {
 			const contentLines = firstLine.includes("type:pgn") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:pgn") ? this.parseOptions(firstLine) : null;
+			const firstLineOpts = firstLine.includes("type:pgn") ? this.parseOptions(header) : null;
 			return {
 				type: "pgn",
 				content: contentLines.join("\n"),
