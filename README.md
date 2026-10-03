@@ -2,7 +2,7 @@
 
 Interactive chessboards in your notes, from FEN and PGN code blocks. Step through games, read inline comments and annotations, quiz yourself in puzzle mode, and keep games in their own `.pgn` files.
 
-![The Opera Game, Morphy's 1858 win, shown at its final position with the header, controls and move list](docs/media/hero.png)
+![The Opera Game, Morphy's 1858 win, with its header, annotated move list, a variation and the board controls](docs/media/hero.png)
 
 ## Quick start
 
@@ -34,7 +34,7 @@ A game:
 
 Paste a PGN and get a board with a header (players, event, site, date, ECO, result) and a move list. `{comments}` show inline, dimmed until you reach that move, and `**bold**` inside a comment is shown bold. Variations in `( ... )` show under the move they branch from. Annotation symbols (`!`, `?`, `!?`, `$1`, `+-` and the Unicode forms) are shown as symbols; hover one to see what it means.
 
-![A Giuoco Piano with an inline comment, a variation and an annotation tooltip](docs/media/annotations.png)
+![A Giuoco Piano with inline comments, a variation and annotation glyphs](docs/media/annotations.png)
 
 ````markdown
 ```chessboard type:pgn title:"Italian Game" start_at:4
@@ -80,7 +80,7 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 Puzzle mode hides the moves. Play the next move on the board; a right move is played and the reply is made for you, a wrong one is undone. Hint highlights the piece to move, then the square it goes to. With `flipped:true` the board is shown from Black's side and you play Black's moves.
 
-![Solving the finish of the Opera Game, with one wrong try and a hint](docs/media/puzzle.gif)
+![Solving the finish of the Opera Game with the help of a hint](docs/media/puzzle.gif)
 
 ````markdown
 ```chessboard type:pgn mode:puzzle title:"Find Morphy's finish"
@@ -101,7 +101,7 @@ Step mode hides the moves you have not reached yet, so the game unfolds as you s
 
 With the board focused: Left and Right arrows step through moves, Home and End jump to the start and end, and F flips the board.
 
-![Stepping through a game with the buttons, then the arrow keys, then F to flip](docs/media/step-mode.gif)
+![Stepping through the Italian Game one move at a time, with the moves and comments appearing as they are reached](docs/media/step-mode.gif)
 
 ````markdown
 ```chessboard type:pgn mode:step title:"Italian Game"
@@ -164,7 +164,7 @@ The settings tab has a quick reference for blocks, header tags and options, plus
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 
-<img src="docs/media/settings.png" width="420" alt="The settings tab with its quick reference, auto-play speed and piece set">
+<img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
 
 ## Options
 
