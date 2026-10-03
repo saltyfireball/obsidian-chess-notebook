@@ -6,7 +6,7 @@ import { drawLabel, drawReason } from "./draw";
 import { flattenMoves, type FlatMove } from "./flat-moves";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
-import { hintSteps } from "./hints";
+import { HintProgress } from "./hints";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
@@ -17,6 +17,7 @@ const ICON_HINT = "M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 
 const ICON_REFRESH = "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5";
 const ICON_PLAY = "M8 5v14l11-7z";
 const ICON_PAUSE = "M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+const NO_SHAPES: BoardShapes = { arrows: [], squares: [] };
 
 export class PgnViewer {
 	private boardManager: BoardManager;
@@ -38,8 +39,8 @@ export class PgnViewer {
 	private puzzleMode = false;
 	private puzzleComplete = false;
 	private stepMode = false;
-	// How many of the move-to-find's hint steps are showing.
-	private hintState = 0;
+	// Which of the move-to-find's hint steps are showing.
+	private hintProgress = new HintProgress<MoveNode>();
 	private hintComment: HTMLElement | null = null;
 	private boardColumn: HTMLElement | null = null;
 	private puzzleHighWater = -1;
@@ -670,6 +671,7 @@ export class PgnViewer {
 		this.stepBtn?.addClass("sfb-chess-btn-hidden");
 		this.resetBtn?.removeClass("sfb-chess-btn-hidden");
 		this.hintBtn?.removeClass("sfb-chess-btn-hidden");
+		this.resetBoardPosition();
 		this.autoPlayOpponentIfNeeded();
 		this.updateMoveVisibility();
 		this.enablePuzzleInput();
@@ -686,6 +688,7 @@ export class PgnViewer {
 		this.hintBtn?.addClass("sfb-chess-btn-hidden");
 		this.boardManager.disablePuzzleInput();
 		this.revealAllMoves();
+		this.resetBoardPosition();
 	}
 
 	private activateStepMode(): void {
@@ -932,15 +935,18 @@ export class PgnViewer {
 		if (flat === null) {
 			void this.boardManager.setPosition(this.startingFen, true);
 			this.boardManager.clearHighlights();
-			this.boardManager.showShapes(this.startingShapes);
 			this.updateDrawBadge(this.startingFen, 1);
 		} else {
 			const node = flat.node;
 			void this.boardManager.setPosition(node.fen, true);
 			this.boardManager.highlightLastMove(node.from, node.to);
-			this.boardManager.showShapes(node.shapes);
 			this.updateDrawBadge(node.fen, flat.repeats);
 		}
+		// An unsolved puzzle shows no drawings: a study often draws the answer
+		// on the move before it.
+		const hidden = this.puzzleMode && !this.puzzleComplete;
+		const shapes = flat ? flat.node.shapes : this.startingShapes;
+		this.boardManager.showShapes(hidden ? NO_SHAPES : shapes);
 	}
 
 	private updateDrawBadge(fen: string, repeats: number): void {
@@ -979,6 +985,7 @@ export class PgnViewer {
 	private showPuzzleComplete(): void {
 		this.puzzleComplete = true;
 		this.boardManager.disablePuzzleInput();
+		this.resetBoardPosition();
 		this.showPuzzleReport(this.mainlineMoves);
 		this.showCompleteBanner("Puzzle complete!");
 	}
@@ -1032,11 +1039,11 @@ export class PgnViewer {
 	private showHint(): void {
 		const expected = this.moveToFind();
 		if (!expected) return;
-		const steps = hintSteps(expected.comment);
-		if (this.hintState >= steps.length) return;
+		if (this.hintProgress.isStale(expected)) this.clearHint();
+		const next = this.hintProgress.next(expected, expected.comment);
+		if (!next) return;
 
-		const step = steps[this.hintState];
-		this.hintState++;
+		const { step, last } = next;
 		if (step === "comment" && expected.comment) {
 			this.showHintComment(expected.comment);
 		} else if (step === "piece") {
@@ -1044,7 +1051,6 @@ export class PgnViewer {
 		} else if (step === "arrow") {
 			this.boardManager.addHintArrow(expected.from, expected.to);
 		}
-		const last = this.hintState === steps.length;
 		this.hintBtn?.toggleClass("sfb-chess-toggle-active", !last);
 		this.hintBtn?.toggleClass("sfb-chess-toggle-active-strong", last);
 	}
@@ -1187,7 +1193,7 @@ export class PgnViewer {
 	}
 
 	private clearHint(): void {
-		this.hintState = 0;
+		this.hintProgress.reset();
 		this.hintBtn?.removeClass("sfb-chess-toggle-active");
 		this.hintBtn?.removeClass("sfb-chess-toggle-active-strong");
 		this.boardManager.clearHintMarkers();
@@ -1222,6 +1228,12 @@ export class PgnViewer {
 		this.updateActiveComment();
 		this.scrollToActiveMove();
 		this.updatePuzzleInputState();
+		this.dropStaleHint();
+	}
+
+	// After navigating, a hint for the old move to find no longer applies.
+	private dropStaleHint(): void {
+		if (this.hintProgress.isStale(this.moveToFind())) this.clearHint();
 	}
 
 	private updatePuzzleInputState(): void {
@@ -1240,6 +1252,7 @@ export class PgnViewer {
 		this.showBoardAt(null);
 		this.updateActiveMove();
 		this.updateActiveComment();
+		this.dropStaleHint();
 		this.movesContainer.scrollTop = 0;
 		if (this.stepMode) {
 			this.updateMoveVisibility();
