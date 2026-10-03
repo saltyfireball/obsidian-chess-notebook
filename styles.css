@@ -285,7 +285,7 @@
 }
 
 .sfb-chess-move:hover {
-    background: var(--background-modifier-hover);
+    background: var(--background-modifier-active-hover);
 }
 
 .sfb-chess-move-active {
@@ -313,15 +313,17 @@
     font-style: italic;
     line-height: 1.4;
     font-family: var(--font-text);
-    transition: opacity 0.15s ease;
+    transition: color 0.15s ease;
 }
 
+/* Dim with the theme's muted text colour, not opacity: a faded accent is too
+   pale to read on a light panel. The current move's comment keeps the accent. */
 .sfb-chess-comment-dimmed {
-    opacity: 0.35;
+    color: var(--text-muted);
 }
 
 .sfb-chess-comment-active {
-    opacity: 1;
+    color: var(--text-accent);
 }
 
 /* Variation blocks */
