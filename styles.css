@@ -1084,7 +1084,7 @@
     padding: 24px 0;
     text-align: center;
 }
-=======
+
 /* Eval bar beside the board, from [%eval] in the PGN */
 .sfb-chess-eval-row {
     display: flex;

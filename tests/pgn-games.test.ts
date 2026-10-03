@@ -56,6 +56,36 @@ describe("splitPgnGames", () => {
 		expect(splitPgnGames("1.e4 e5 2.Nf3")).toEqual(["1.e4 e5 2.Nf3"]);
 	});
 
+	it("drops a comment before the first tag block instead of making it a game", () => {
+		expect(splitPgnGames('{Export note}\n[White "A"]\n[Black "B"]\n1.e4 e5 *')).toEqual([
+			'[White "A"]\n[Black "B"]\n1.e4 e5 *',
+		]);
+	});
+
+	it("keeps a comment after a result with that game", () => {
+		expect(splitPgnGames("1.e4 e5 * {end note}")).toEqual(["1.e4 e5 * {end note}"]);
+	});
+
+	it("keeps a comment between games with the game before it", () => {
+		const text = '[White "A"]\n\n1.e4 e5 1-0 {Black resigns}\n\n[White "B"]\n\n1.d4 *\n; trailer\n{last word}\n';
+		const games = splitPgnGames(text);
+		expect(games).toEqual([
+			'[White "A"]\n\n1.e4 e5 1-0 {Black resigns}',
+			'[White "B"]\n\n1.d4 *\n; trailer\n{last word}',
+		]);
+		expect(pickGame(games, 2)).toBe(1);
+		expect(gamePlayers(games[pickGame(games, 2)])).toBe("B vs Black");
+	});
+
+	it("keeps a comment inside a tag block's game", () => {
+		const text = '[White "A"]\n{opening note}\n1.e4 *';
+		expect(splitPgnGames(text)).toEqual([text]);
+	});
+
+	it("still returns comment-only text as its one entry", () => {
+		expect(splitPgnGames("{just a note}")).toEqual(["{just a note}"]);
+	});
+
 	it("does not take castling or move numbers for results", () => {
 		expect(splitPgnGames("1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.O-O 10-0")).toHaveLength(1);
 	});

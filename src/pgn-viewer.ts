@@ -5,6 +5,7 @@ import { getNagInfo } from "./nag-data";
 import { drawLabel, drawReason } from "./draw";
 import { flattenMoves, type FlatMove } from "./flat-moves";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
+import { createNavButton } from "./nav-button";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { HintProgress } from "./hints";
 import { legalTargets } from "./legal-moves";
@@ -22,6 +23,7 @@ const ICON_HINT = "M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 
 const ICON_REFRESH = "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5";
 const ICON_PLAY = "M8 5v14l11-7z";
 const ICON_PAUSE = "M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+const TOGGLE_CLS = "sfb-chess-btn sfb-chess-toggle-btn";
 const NO_SHAPES: BoardShapes = { arrows: [], squares: [] };
 
 export class PgnViewer {
@@ -529,33 +531,33 @@ export class PgnViewer {
 	private buildControls(wrapper: HTMLElement): void {
 		const controls = wrapper.createDiv({ cls: "sfb-chess-controls" });
 
-		this.puzzleBtn = this.createToggleButton(controls, "Puzzle mode", ICON_PUZZLE, () => {
+		this.puzzleBtn = createNavButton(controls, "Puzzle mode", ICON_PUZZLE, () => {
 			this.stopAutoPlay();
 			this.togglePuzzleMode();
-		});
+		}, TOGGLE_CLS);
 		this.stepBtn = this.createStrokeToggleButton(controls, "Step mode", ICON_STEP, () => {
 			this.stopAutoPlay();
 			this.toggleStepMode();
 		});
 		this.resetBtn = this.createStrokeToggleButton(controls, "Reset puzzle", ICON_REFRESH, () => this.resetPuzzle());
 		this.resetBtn.addClass("sfb-chess-btn-hidden");
-		this.hintBtn = this.createToggleButton(controls, "Hint", ICON_HINT, () => this.showHint());
+		this.hintBtn = createNavButton(controls, "Hint", ICON_HINT, () => this.showHint(), TOGGLE_CLS);
 		this.hintBtn.addClass("sfb-chess-btn-hidden");
 
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
-		this.createNavButton(controls, "Flip board", "M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z", () => this.flip());
-		this.autoPlayBtn = this.createNavButton(controls, "Auto-play", ICON_PLAY, () => this.toggleAutoPlay());
-		this.createNavButton(controls, "First move", "M6 6h2v12H6zM18 6v12l-6-6 6-6z", () => { this.stopAutoPlay(); this.goToStart(); });
-		this.createNavButton(controls, "Previous move", "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z", () => { this.stopAutoPlay(); this.prevMove(); });
-		this.createNavButton(controls, "Next move", "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z", () => { this.stopAutoPlay(); this.nextMove(); });
-		this.createNavButton(controls, "Last move", "M16 18V6h2v12h-2zM8 18V6l6 6-6 6z", () => { this.stopAutoPlay(); this.goToEnd(); });
+		createNavButton(controls, "Flip board", "M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z", () => this.flip());
+		this.autoPlayBtn = createNavButton(controls, "Auto-play", ICON_PLAY, () => this.toggleAutoPlay());
+		createNavButton(controls, "First move", "M6 6h2v12H6zM18 6v12l-6-6 6-6z", () => { this.stopAutoPlay(); this.goToStart(); });
+		createNavButton(controls, "Previous move", "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z", () => { this.stopAutoPlay(); this.prevMove(); });
+		createNavButton(controls, "Next move", "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z", () => { this.stopAutoPlay(); this.nextMove(); });
+		createNavButton(controls, "Last move", "M16 18V6h2v12h-2zM8 18V6l6 6-6 6z", () => { this.stopAutoPlay(); this.goToEnd(); });
 
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
-		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
+		const copyFen: HTMLElement = createNavButton(controls, "Copy FEN", ICON_FEN, () =>
 			copyWithFeedback(copyFen, this.currentFen(), "FEN", this.copyHooks()));
-		const copyPgn: HTMLElement = this.createNavButton(controls, "Copy PGN", ICON_COPY, () =>
+		const copyPgn: HTMLElement = createNavButton(controls, "Copy PGN", ICON_COPY, () =>
 			copyWithFeedback(copyPgn, this.rawPgn, "PGN", this.copyHooks()));
 	}
 
@@ -567,23 +569,8 @@ export class PgnViewer {
 		return flat ? flat.node.fen : this.startingFen;
 	}
 
-	private createNavButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {
-		const btn = parent.createEl("button", { cls: "sfb-chess-btn", attr: { "aria-label": label } });
-		const svg = createSvg("svg");
-		svg.setAttribute("viewBox", "0 0 24 24");
-		svg.setAttribute("width", "18");
-		svg.setAttribute("height", "18");
-		const path = createSvg("path");
-		path.setAttribute("fill", "currentColor");
-		path.setAttribute("d", iconPath);
-		svg.appendChild(path);
-		btn.appendChild(svg);
-		btn.addEventListener("click", handler);
-		return btn;
-	}
-
 	private createStrokeToggleButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {
-		const btn = parent.createEl("button", { cls: "sfb-chess-btn sfb-chess-toggle-btn", attr: { "aria-label": label } });
+		const btn = parent.createEl("button", { cls: TOGGLE_CLS, attr: { "aria-label": label } });
 		const svg = createSvg("svg");
 		svg.setAttribute("viewBox", "0 0 24 24");
 		svg.setAttribute("width", "18");
@@ -594,21 +581,6 @@ export class PgnViewer {
 		svg.setAttribute("stroke-linecap", "round");
 		svg.setAttribute("stroke-linejoin", "round");
 		const path = createSvg("path");
-		path.setAttribute("d", iconPath);
-		svg.appendChild(path);
-		btn.appendChild(svg);
-		btn.addEventListener("click", handler);
-		return btn;
-	}
-
-	private createToggleButton(parent: HTMLElement, label: string, iconPath: string, handler: () => void): HTMLElement {
-		const btn = parent.createEl("button", { cls: "sfb-chess-btn sfb-chess-toggle-btn", attr: { "aria-label": label } });
-		const svg = createSvg("svg");
-		svg.setAttribute("viewBox", "0 0 24 24");
-		svg.setAttribute("width", "18");
-		svg.setAttribute("height", "18");
-		const path = createSvg("path");
-		path.setAttribute("fill", "currentColor");
 		path.setAttribute("d", iconPath);
 		svg.appendChild(path);
 		btn.appendChild(svg);
