@@ -340,6 +340,7 @@ function renderReference(containerEl: HTMLElement): void {
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
 		["size:small|medium|large|N", "Board width: small (300px), medium (420px), large (560px), or N pixels (default: the Board size setting)"],
 		["start_at:start|end|N", "Initial position: start, end, or half-move index N counted from 0 (0 is after White's first move)"],
+		['game:N|"White vs Black"', "In a PGN with several games, open game N (counted from 1) or the game between those players"],
 		['title:"..."', "Display a title in the header bar"],
 		['white:"..."', "Override or set White player name"],
 		['black:"..."', "Override or set Black player name"],

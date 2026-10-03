@@ -62,6 +62,8 @@ export interface CodeBlockOptions {
 	eco: string | null;
 	result: string | null;
 	src: string | null;
+	// The game to open in a PGN with several: 1-based number or "White vs Black".
+	game: number | string | null;
 }
 
 export const HINT_FROM_LIGHT: MarkerType = {
