@@ -254,15 +254,16 @@
     display: flex;
     align-items: center;
     padding: 1px 8px;
-    background: #727072;
 }
 
+/* Theme variables, so the stripes and the theme's text colours stay readable
+   in light, dark and custom themes. */
 .sfb-chess-move-row-alt {
-    background: #403e41;
+    background: var(--background-modifier-hover);
 }
 
 .sfb-chess-move-row:hover {
-    background: #3a373b;
+    background: var(--background-modifier-active-hover);
 }
 
 .sfb-chess-move-number {
@@ -453,6 +454,8 @@
 
 .sfb-chess-settings-usage pre {
     margin: 8px 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .sfb-chess-settings-note {
@@ -502,7 +505,7 @@
 }
 
 .sfb-chess-btn.sfb-chess-btn-copied {
-    color: #A9DC76;
+    color: var(--color-green);
 }
 
 /* ============================================================
