@@ -1066,11 +1066,27 @@
     font-weight: 600;
 }
 
-.sfb-chess-review-source {
+/* A real button that reads as a note link. */
+.sfb-chess-review-bar button.sfb-chess-review-source {
+    display: block;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    border: none;
     color: var(--text-muted);
+    font-size: inherit;
+    cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.sfb-chess-review-bar button.sfb-chess-review-source:hover {
+    background: none;
+    color: var(--text-accent);
+    text-decoration: underline;
 }
 
 .sfb-chess-review-actions {
@@ -1084,7 +1100,7 @@
     padding: 24px 0;
     text-align: center;
 }
-=======
+
 /* Eval bar beside the board, from [%eval] in the PGN */
 .sfb-chess-eval-row {
     display: flex;

@@ -66,31 +66,42 @@ export class PuzzleReviewModal extends Modal {
 		const puzzle = this.order[this.index];
 		const bar = el.createDiv({ cls: "sfb-chess-review-bar" });
 		bar.createSpan({ cls: "sfb-chess-review-count", text: reviewCount(this.index, this.order.length) });
-		const source = bar.createEl("a", {
+		const source = bar.createEl("button", {
 			cls: "sfb-chess-review-source",
 			text: puzzle.path.replace(/\.md$/i, ""),
-			attr: { href: "#", "aria-label": "Open the note this puzzle is in" },
+			attr: { type: "button", title: "Open the note this puzzle is in" },
 		});
-		source.addEventListener("click", (e) => {
-			e.preventDefault();
+		source.addEventListener("click", () => {
 			this.close();
 			this.openSource(puzzle);
 		});
 
 		const host = el.createDiv({ cls: "sfb-chess-review-board" });
-		this.viewer = new PgnViewer(host, puzzle.pgn, { ...puzzle.options, mode: "puzzle", center: true }, this.settings);
+		try {
+			this.viewer = new PgnViewer(host, puzzle.pgn, { ...puzzle.options, mode: "puzzle", center: true }, this.settings);
+		} catch (e: unknown) {
+			console.warn("chess-notebook: could not show a review puzzle", e);
+			host.empty();
+			host.createDiv({ cls: "sfb-chess-error", text: "This puzzle could not be shown." });
+		}
 
 		const actions = el.createDiv({ cls: "sfb-chess-review-actions" });
-		const next = actions.createEl("button", { text: "Skip", cls: "mod-cta", attr: { type: "button" } });
+		// Polite live region: a screen reader hears Skip turn into Next.
+		const next = actions.createEl("button", { text: "Skip", cls: "mod-cta", attr: { type: "button", "aria-live": "polite" } });
 		next.addEventListener("click", () => {
 			this.index++;
 			this.render();
 		});
 		// The viewer shows its report when the puzzle is solved: Skip becomes Next.
 		this.observer = new MutationObserver(() => {
-			if (host.querySelector(".sfb-chess-puzzle-report")) next.setText("Next");
+			if (host.querySelector(".sfb-chess-puzzle-report") && next.textContent !== "Next") next.setText("Next");
 		});
 		this.observer.observe(host, { childList: true, subtree: true });
+
+		// Start on the board, so its keys work at once; with no board, on the button.
+		// Deferred: on open, the modal focuses its first button after onOpen.
+		const target = host.querySelector<HTMLElement>("[tabindex='0']") ?? next;
+		window.setTimeout(() => target.focus(), 0);
 	}
 
 	private renderDone(): void {
@@ -103,6 +114,7 @@ export class PuzzleReviewModal extends Modal {
 		const actions = el.createDiv({ cls: "sfb-chess-review-actions" });
 		const again = actions.createEl("button", { text: "Shuffle again", cls: "mod-cta", attr: { type: "button" } });
 		again.addEventListener("click", () => this.restart());
+		again.focus();
 		const close = actions.createEl("button", { text: "Close", attr: { type: "button" } });
 		close.addEventListener("click", () => this.close());
 	}
