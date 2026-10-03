@@ -102,5 +102,7 @@ declare module "cm-chessboard/src/extensions/arrows/Arrows.js" {
 	};
 	export class Arrows {
 		constructor(chessboard: unknown, props?: Record<string, unknown>);
+		arrowGroup: SVGGElement;
+		drawArrow(arrow: { from: string; to: string; type: ArrowType }): void;
 	}
 }

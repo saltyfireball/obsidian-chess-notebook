@@ -59,6 +59,39 @@ describe("parsePgn", () => {
 		expect(parsed.moves[1].comment).toBe("never closed");
 	});
 
+	it("reads [%cal] arrows and [%csl] squares out of comments", () => {
+		const parsed = parsePgn("1.e4 {Aim at f7 [%cal Gf1c4,Rd8h4] [%csl Yf7]} e5 *");
+
+		expect(parsed.moves[0].comment).toBe("Aim at f7");
+		expect(parsed.moves[0].shapes).toEqual({
+			arrows: [
+				{ from: "f1", to: "c4", color: "G" },
+				{ from: "d8", to: "h4", color: "R" },
+			],
+			squares: [{ square: "f7", color: "Y" }],
+		});
+		expect(parsed.moves[1].shapes).toEqual({ arrows: [], squares: [] });
+	});
+
+	it("leaves no comment when a comment holds only drawings", () => {
+		const parsed = parsePgn("{[%csl Bd4, Be5]} 1.e4 {[%cal Bg1f3]} e5 *");
+
+		expect(parsed.startingComment).toBeNull();
+		expect(parsed.startingShapes.squares).toEqual([
+			{ square: "d4", color: "B" },
+			{ square: "e5", color: "B" },
+		]);
+		expect(parsed.moves[0].comment).toBeNull();
+		expect(parsed.moves[0].shapes.arrows).toEqual([{ from: "g1", to: "f3", color: "B" }]);
+	});
+
+	it("reads drawings in variations and skips malformed entries", () => {
+		const parsed = parsePgn("1.e4 e5 (1...c5 {[%cal Gg1f3,Xa1a2,Gz9a1,Ge4e4]}) *");
+		const c5 = parsed.moves[1].variations[0][0];
+
+		expect(c5.shapes.arrows).toEqual([{ from: "g1", to: "f3", color: "G" }]);
+	});
+
 	it("returns no moves for text that is not a game", () => {
 		const parsed = parsePgn("hello world");
 

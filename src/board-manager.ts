@@ -5,6 +5,7 @@ import {
 	BORDER_TYPE,
 	INPUT_EVENT_TYPE,
 } from "cm-chessboard/src/Chessboard.js";
+import type { ArrowType } from "cm-chessboard/src/Chessboard.js";
 import { Markers } from "cm-chessboard/src/extensions/markers/Markers.js";
 import { Arrows } from "cm-chessboard/src/extensions/arrows/Arrows.js";
 import { Svg } from "cm-chessboard/src/lib/Svg.js";
@@ -17,9 +18,12 @@ import {
 	HINT_FROM_DARK,
 	HINT_TO_LIGHT,
 	HINT_TO_DARK,
+	SHAPE_ARROWS,
+	SHAPE_SQUARES,
 	isLightSquare,
 } from "./types";
 import type { ChessSettings } from "./types";
+import type { BoardShapes } from "./pgn-parser";
 
 interface MoveInputEvent {
 	type: string;
@@ -71,11 +75,32 @@ export function removeSprites(): void {
 	spriteDocs.clear();
 }
 
+let arrowBoardCount = 0;
+
+// The stock extension names each arrow head's <marker> after its squares
+// alone. Obsidian also renders a hidden copy of every block, so the first
+// marker with that id is an invisible one and the arrow shows no head. Each
+// board gets its own prefix instead.
+class BoardArrows extends Arrows {
+	private idPrefix = `sfb-arrow-${++arrowBoardCount}-`;
+
+	drawArrow(arrow: { from: string; to: string; type: ArrowType }): void {
+		super.drawArrow(arrow);
+		const group = this.arrowGroup.lastElementChild;
+		const marker = group?.querySelector("marker");
+		const line = group?.querySelector("line");
+		if (!marker || !line) return;
+		marker.id = this.idPrefix + arrow.from + arrow.to;
+		line.setAttribute("marker-end", `url(#${marker.id})`);
+	}
+}
+
 export class BoardManager {
 	private board: Chessboard;
 	private container: HTMLElement;
 	private pieceSetName: string | null = null;
 	private timers = new Set<number>();
+	private shapesShown = false;
 
 	constructor(
 		container: HTMLElement,
@@ -107,7 +132,7 @@ export class BoardManager {
 					props: { autoMarkers: null },
 				},
 				{
-					class: Arrows,
+					class: BoardArrows,
 					props: {},
 				},
 			],
@@ -154,6 +179,22 @@ export class BoardManager {
 
 		this.board.addMarker(fromType, from);
 		this.board.addMarker(toType, to);
+	}
+
+	// Replaces the drawings from the previous position's comment with these.
+	// Each remove redraws the board, so a game without drawings skips them.
+	showShapes(shapes: BoardShapes): void {
+		if (this.shapesShown) {
+			for (const type of Object.values(SHAPE_ARROWS)) this.board.removeArrows(type);
+			for (const type of Object.values(SHAPE_SQUARES)) this.board.removeMarkers(type);
+		}
+		this.shapesShown = shapes.arrows.length > 0 || shapes.squares.length > 0;
+		for (const arrow of shapes.arrows) {
+			this.board.addArrow(SHAPE_ARROWS[arrow.color], arrow.from, arrow.to);
+		}
+		for (const square of shapes.squares) {
+			this.board.addMarker(SHAPE_SQUARES[square.color], square.square);
+		}
 	}
 
 	clearHighlights(): void {
