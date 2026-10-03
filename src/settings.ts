@@ -3,10 +3,30 @@ import type { SettingDefinitionItem } from "obsidian";
 import type ChessPlugin from "./main";
 import { DEFAULT_SETTINGS } from "./types";
 import { listPieceSets } from "./fan-pieces";
+import { BOARD_SIZES } from "./board-size";
 
 const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
+const VOLUME = { min: 0, max: 100, step: 5 };
+const SOUNDS_DESC = "Play a short tone for each move and a different one for captures.";
+const VOLUME_DESC = "Loudness of the move sounds.";
+const ANNOUNCE_DESC = "Have screen readers read out each move as you step through a game.";
+const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+
+// The code block names rendered besides chessboard, and what each renders as.
+const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [
+	{ key: "chessBlocks", name: "Render chess blocks", desc: "A FEN or a PGN, told apart by its text." },
+	{ key: "pgnBlocks", name: "Render pgn blocks", desc: "Rendered as type:pgn." },
+	{ key: "fenBlocks", name: "Render fen blocks", desc: "Rendered as type:fen." },
+];
+const BOARD_SIZE_DESC = "Default board width. Override per block with size:small|medium|large or a width in pixels.";
+
+function boardSizeOptions(): Record<string, string> {
+	const options: Record<string, string> = {};
+	for (const name of Object.keys(BOARD_SIZES)) options[name] = `${name} (${BOARD_SIZES[name]}px)`;
+	return options;
+}
 
 // Built by hand: Object.fromEntries is ES2019, past this tsconfig's lib, so
 // it types as any and the review flags it.
@@ -51,6 +71,23 @@ export class ChessSettingTab extends PluginSettingTab {
 			},
 			{
 				type: "group",
+				heading: "Board",
+				items: [
+					{
+						name: "Board size",
+						desc: BOARD_SIZE_DESC,
+						aliases: ["size", "width"],
+						control: {
+							type: "dropdown",
+							key: "boardSize",
+							options: boardSizeOptions(),
+							defaultValue: DEFAULT_SETTINGS.boardSize,
+						},
+					},
+				],
+			},
+			{
+				type: "group",
 				heading: "Playback",
 				items: [
 					{
@@ -78,6 +115,40 @@ export class ChessSettingTab extends PluginSettingTab {
 					},
 				],
 			},
+			{
+				type: "group",
+				heading: "Sound & accessibility",
+				items: [
+					{
+						name: "Move sounds",
+						desc: SOUNDS_DESC,
+						aliases: ["sound", "audio", "capture"],
+						control: { type: "toggle", key: "moveSounds", defaultValue: DEFAULT_SETTINGS.moveSounds },
+					},
+					{
+						name: "Sound volume",
+						desc: VOLUME_DESC,
+						aliases: ["volume", "loudness"],
+						control: { type: "slider", key: "soundVolume", ...VOLUME, defaultValue: DEFAULT_SETTINGS.soundVolume },
+					},
+					{
+						name: "Announce moves",
+						desc: ANNOUNCE_DESC,
+						aliases: ["screen reader", "accessibility", "speak", "aria"],
+						control: { type: "toggle", key: "announceMoves", defaultValue: DEFAULT_SETTINGS.announceMoves },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Code blocks",
+				items: ALIAS_TOGGLES.map((t) => ({
+					name: t.name,
+					desc: `${t.desc} ${ALIASES_DESC}`,
+					aliases: ["alias", "chess", "pgn", "fen", "code block"],
+					control: { type: "toggle" as const, key: t.key, defaultValue: DEFAULT_SETTINGS[t.key] },
+				})),
+			},
 		];
 	}
 
@@ -92,6 +163,23 @@ export class ChessSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("How to use").setHeading();
 		renderReference(containerEl);
+
+		new Setting(containerEl).setName("Board").setHeading();
+
+		new Setting(containerEl)
+			.setName("Board size")
+			.setDesc(BOARD_SIZE_DESC)
+			.addDropdown((dropdown) => {
+				const options = boardSizeOptions();
+				for (const value of Object.keys(options)) {
+					dropdown.addOption(value, options[value]);
+				}
+				dropdown.setValue(this.plugin.settings.boardSize);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.boardSize = value;
+					await this.plugin.saveSettings();
+				});
+			});
 
 		new Setting(containerEl).setName("Playback").setHeading();
 
@@ -127,6 +215,57 @@ export class ChessSettingTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 			});
 		});
+
+		new Setting(containerEl).setName("Sound & accessibility").setHeading();
+
+		new Setting(containerEl)
+			.setName("Move sounds")
+			.setDesc(SOUNDS_DESC)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.moveSounds).onChange(async (value) => {
+					this.plugin.settings.moveSounds = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		const volumeDesc = (v: number) => `${VOLUME_DESC} Now ${v}.`;
+		const volumeSetting = new Setting(containerEl)
+			.setName("Sound volume")
+			.setDesc(volumeDesc(this.plugin.settings.soundVolume));
+		volumeSetting.addSlider((slider) =>
+			slider
+				.setLimits(VOLUME.min, VOLUME.max, VOLUME.step)
+				.setValue(this.plugin.settings.soundVolume)
+				.onChange(async (value) => {
+					this.plugin.settings.soundVolume = value;
+					volumeSetting.setDesc(volumeDesc(value));
+					await this.plugin.saveSettings();
+				})
+		);
+
+		new Setting(containerEl)
+			.setName("Announce moves")
+			.setDesc(ANNOUNCE_DESC)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.announceMoves).onChange(async (value) => {
+					this.plugin.settings.announceMoves = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl).setName("Code blocks").setHeading();
+
+		for (const t of ALIAS_TOGGLES) {
+			new Setting(containerEl)
+				.setName(t.name)
+				.setDesc(`${t.desc} ${ALIASES_DESC}`)
+				.addToggle((toggle) =>
+					toggle.setValue(this.plugin.settings[t.key]).onChange(async (value) => {
+						this.plugin.settings[t.key] = value;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
 	}
 }
 
@@ -199,6 +338,7 @@ function renderReference(containerEl: HTMLElement): void {
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
+		["size:small|medium|large|N", "Board width: small (300px), medium (420px), large (560px), or N pixels (default: the Board size setting)"],
 		["start_at:start|end|N", "Initial position: start, end, or half-move index N counted from 0 (0 is after White's first move)"],
 		['game:N|"White vs Black"', "In a PGN with several games, open game N (counted from 1) or the game between those players"],
 		['title:"..."', "Display a title in the header bar"],
@@ -232,4 +372,22 @@ function renderReference(containerEl: HTMLElement): void {
 	commentExample.createEl("code", {
 		text: '1.e4 e5 {The most popular reply.} 2.Nf3 Nc6 {Defending the pawn.}',
 	});
+
+	new Setting(containerEl).setName("Sound & accessibility").setHeading();
+
+	const a11yTable = containerEl.createEl("table", { cls: "sfb-chess-settings-table" });
+	const a11yHeaderRow = a11yTable.createEl("thead").createEl("tr");
+	a11yHeaderRow.createEl("th", { text: "Feature" });
+	a11yHeaderRow.createEl("th", { text: "Description" });
+	const a11yTbody = a11yTable.createEl("tbody");
+	const a11yRows: [string, string][] = [
+		["Move sounds", "A short tone for each move, a lower one for captures (off by default, volume in settings)"],
+		["Announce moves", 'Screen readers read each move as you step, e.g. "12. Nf3, knight to f3" (off by default)'],
+		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (always on)'],
+	];
+	for (const [feature, desc] of a11yRows) {
+		const tr = a11yTbody.createEl("tr");
+		tr.createEl("td", { text: feature });
+		tr.createEl("td", { text: desc });
+	}
 }
