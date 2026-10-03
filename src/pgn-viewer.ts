@@ -1,6 +1,6 @@
 import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
-import { parsePgn, type MoveNode } from "./pgn-parser";
+import { parsePgn, type BoardShapes, type MoveNode } from "./pgn-parser";
 import { getNagInfo } from "./nag-data";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
@@ -24,6 +24,7 @@ export class PgnViewer {
 	private currentMoveId: string | null = null;
 	private startingFen: string;
 	private startingComment: string | null = null;
+	private startingShapes: BoardShapes = { arrows: [], squares: [] };
 	private title: string | null = null;
 	private headers: PgnHeaders;
 	private moveElements: Map<string, HTMLElement> = new Map();
@@ -81,6 +82,7 @@ export class PgnViewer {
 		this.applyHeaderOverrides(options);
 		this.startingFen = parsed.startingFen;
 		this.startingComment = parsed.startingComment;
+		this.startingShapes = parsed.startingShapes;
 		this.mainlineMoves = parsed.moves;
 		this.result = parsed.result;
 		this.initialMode = options.mode;
@@ -124,6 +126,7 @@ export class PgnViewer {
 		this.movesContainer = sidebar.createDiv({ cls: "sfb-chess-moves" });
 
 		this.buildMoveList();
+		this.boardManager.showShapes(this.startingShapes);
 		this.applyStartAt(options.startAt);
 		this.updateActiveComment();
 
@@ -894,14 +897,24 @@ export class PgnViewer {
 
 	private resetBoardPosition(): void {
 		if (this.currentMoveId === null) {
-			void this.boardManager.setPosition(this.startingFen, true);
-			this.boardManager.clearHighlights();
+			this.showBoardAt(null);
 		} else {
 			const flat = this.allFlatMoves.find((fm) => fm.id === this.currentMoveId);
-			if (flat) {
-				void this.boardManager.setPosition(flat.node.fen, true);
-				this.boardManager.highlightLastMove(flat.node.from, flat.node.to);
-			}
+			if (flat) this.showBoardAt(flat.node);
+		}
+	}
+
+	// Puts the board at the position after node (the start when null), with its
+	// last-move highlight and the drawings from its comment.
+	private showBoardAt(node: MoveNode | null): void {
+		if (node === null) {
+			void this.boardManager.setPosition(this.startingFen, true);
+			this.boardManager.clearHighlights();
+			this.boardManager.showShapes(this.startingShapes);
+		} else {
+			void this.boardManager.setPosition(node.fen, true);
+			this.boardManager.highlightLastMove(node.from, node.to);
+			this.boardManager.showShapes(node.shapes);
 		}
 	}
 
@@ -997,9 +1010,7 @@ export class PgnViewer {
 		if (!flat) return;
 
 		this.currentMoveId = id;
-		const node = flat.node;
-		void this.boardManager.setPosition(node.fen, true);
-		this.boardManager.highlightLastMove(node.from, node.to);
+		this.showBoardAt(flat.node);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.scrollToActiveMove();
@@ -1018,8 +1029,7 @@ export class PgnViewer {
 
 	private goToStart(): void {
 		this.currentMoveId = null;
-		void this.boardManager.setPosition(this.startingFen, true);
-		this.boardManager.clearHighlights();
+		this.showBoardAt(null);
 		this.updateActiveMove();
 		this.updateActiveComment();
 		this.movesContainer.scrollTop = 0;

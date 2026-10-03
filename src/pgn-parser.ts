@@ -12,12 +12,21 @@ export interface MoveNode {
 	comment: string | null;
 	nag: string | null;
 	variations: MoveNode[][];
+	shapes: BoardShapes;
+}
+
+export type ShapeColor = "G" | "R" | "Y" | "B";
+
+export interface BoardShapes {
+	arrows: { from: string; to: string; color: ShapeColor }[];
+	squares: { square: string; color: ShapeColor }[];
 }
 
 export interface ParsedPgn {
 	headers: Record<string, string>;
 	startingFen: string;
 	startingComment: string | null;
+	startingShapes: BoardShapes;
 	moves: MoveNode[];
 	result: string | null;
 }
@@ -326,6 +335,7 @@ function parseMoveSequence(
 					comment: null,
 					nag: null,
 					variations: [],
+					shapes: { arrows: [], squares: [] },
 				});
 			} catch {
 				// Invalid move - skip
@@ -371,6 +381,43 @@ function getPreMoveFen(
 	return allMoves[idx - 1].fen;
 }
 
+const SHAPE_COMMAND_REGEX = /\[%(cal|csl)\s+([^\]]*)\]/g;
+const SHAPE_ARROW_REGEX = /^([GRYB])([a-h][1-8])([a-h][1-8])$/;
+const SHAPE_SQUARE_REGEX = /^([GRYB])([a-h][1-8])$/;
+
+// Takes the [%cal] arrows and [%csl] squares out of a comment. The text left
+// over is what is shown; null when the comment held only drawings.
+export function extractShapes(comment: string | null): { text: string | null; shapes: BoardShapes } {
+	const shapes: BoardShapes = { arrows: [], squares: [] };
+	if (comment === null) return { text: null, shapes };
+
+	const text = comment.replace(SHAPE_COMMAND_REGEX, (_match, command: string, body: string) => {
+		for (const entry of body.split(",").map((e) => e.trim())) {
+			if (command === "cal") {
+				const m = SHAPE_ARROW_REGEX.exec(entry);
+				if (m && m[2] !== m[3]) {
+					shapes.arrows.push({ from: m[2], to: m[3], color: m[1] as ShapeColor });
+				}
+			} else {
+				const m = SHAPE_SQUARE_REGEX.exec(entry);
+				if (m) shapes.squares.push({ square: m[2], color: m[1] as ShapeColor });
+			}
+		}
+		return " ";
+	}).replace(/\s+/g, " ").trim();
+
+	return { text: text.length > 0 ? text : null, shapes };
+}
+
+function applyShapes(moves: MoveNode[]): void {
+	for (const move of moves) {
+		const { text, shapes } = extractShapes(move.comment);
+		move.comment = text;
+		move.shapes = shapes;
+		for (const variation of move.variations) applyShapes(variation);
+	}
+}
+
 export function parsePgn(pgn: string): ParsedPgn {
 	const { headers, moveText } = extractHeaders(pgn);
 	const setupFen = headers["FEN"] || headers["fen"];
@@ -379,7 +426,9 @@ export function parsePgn(pgn: string): ParsedPgn {
 
 	const tokens = tokenize(moveText);
 	const pos = { idx: 0 };
-	const { moves, startingComment } = parseMoveSequence(tokens, pos, chess);
+	const { moves, startingComment: rawStartingComment } = parseMoveSequence(tokens, pos, chess);
+	applyShapes(moves);
+	const { text: startingComment, shapes: startingShapes } = extractShapes(rawStartingComment);
 
 	let result: string | null = null;
 	for (const token of tokens) {
@@ -392,6 +441,7 @@ export function parsePgn(pgn: string): ParsedPgn {
 		headers,
 		startingFen,
 		startingComment,
+		startingShapes,
 		moves,
 		result,
 	};

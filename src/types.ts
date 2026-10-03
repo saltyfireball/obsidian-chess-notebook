@@ -1,4 +1,4 @@
-import type { MarkerType } from "cm-chessboard/src/Chessboard.js";
+import type { ArrowType, MarkerType } from "cm-chessboard/src/Chessboard.js";
 
 export interface ChessSettings {
 	boardTheme: string;
@@ -97,6 +97,21 @@ export const LAST_MOVE_LIGHT: MarkerType = {
 export const LAST_MOVE_DARK: MarkerType = {
 	class: "marker-lastmove-dark",
 	slice: "markerSquare",
+};
+
+// Drawings from [%cal] and [%csl] in PGN comments, one type per colour letter.
+export const SHAPE_ARROWS: Record<string, ArrowType> = {
+	G: { class: "arrow-pgn-green" },
+	R: { class: "arrow-pgn-red" },
+	Y: { class: "arrow-pgn-yellow" },
+	B: { class: "arrow-pgn-blue" },
+};
+
+export const SHAPE_SQUARES: Record<string, MarkerType> = {
+	G: { class: "marker-pgn-green", slice: "markerSquare" },
+	R: { class: "marker-pgn-red", slice: "markerSquare" },
+	Y: { class: "marker-pgn-yellow", slice: "markerSquare" },
+	B: { class: "marker-pgn-blue", slice: "markerSquare" },
 };
 
 export function isLightSquare(square: string): boolean {

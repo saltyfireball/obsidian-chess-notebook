@@ -530,6 +530,29 @@
 }
 
 /* ============================================================
+   Drawings from [%cal] and [%csl] in PGN comments
+   ============================================================ */
+
+.cm-chessboard .arrow-pgn-green { --sfb-shape: rgba(21, 120, 27, 0.8); }
+.cm-chessboard .arrow-pgn-red { --sfb-shape: rgba(136, 32, 32, 0.8); }
+.cm-chessboard .arrow-pgn-yellow { --sfb-shape: rgba(230, 143, 0, 0.8); }
+.cm-chessboard .arrow-pgn-blue { --sfb-shape: rgba(0, 48, 136, 0.8); }
+
+.cm-chessboard [class*="arrow-pgn-"] .arrow-head {
+    fill: var(--sfb-shape);
+    fill-rule: nonzero;
+}
+.cm-chessboard [class*="arrow-pgn-"] .arrow-line {
+    stroke: var(--sfb-shape);
+    stroke-linecap: round;
+}
+
+.cm-chessboard .markers .marker.marker-pgn-green { fill: rgb(21, 120, 27); opacity: 0.5; }
+.cm-chessboard .markers .marker.marker-pgn-red { fill: rgb(200, 40, 40); opacity: 0.5; }
+.cm-chessboard .markers .marker.marker-pgn-yellow { fill: rgb(230, 143, 0); opacity: 0.5; }
+.cm-chessboard .markers .marker.marker-pgn-blue { fill: rgb(0, 80, 200); opacity: 0.5; }
+
+/* ============================================================
    Hint markers
    ============================================================ */
 
