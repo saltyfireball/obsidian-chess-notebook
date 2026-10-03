@@ -714,6 +714,37 @@
     visibility: hidden;
 }
 
+/* While the reader explores a line of their own, the game's moves wait. */
+.sfb-chess-moves.sfb-chess-moves-paused {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.sfb-chess-explore-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    background: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.sfb-chess-explore-label {
+    color: var(--text-muted);
+}
+
+.sfb-chess-explore-line {
+    flex: 1 1 auto;
+    font-family: var(--font-monospace);
+}
+
+.sfb-chess-explore-back {
+    font-size: var(--font-ui-small);
+}
+
 /* The comment on the move to find, shown by the first Hint press, and the
    line a drill run follows. */
 .sfb-chess-hint-comment,

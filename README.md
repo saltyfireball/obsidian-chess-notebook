@@ -101,6 +101,10 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 ```
 ````
 
+### Trying your own moves
+
+On a game or a single FEN position, drag any legal move to try a line of your own from the position on the board. An "Exploring: 12...Nf6 13.d4" bar appears under the board, the game's moves wait until you are done, and Back to game (or Escape) puts the game back where you left it. The Left arrow takes back your last move. Nothing is written to the note. This works in normal mode; puzzle, step and drill mode keep the board to themselves.
+
 ### Static diagrams for printing
 
 `interactive:false` (or `diagram:true`) draws a plain board with no controls and no move list, so a PDF export or printout looks like a book diagram. A PGN shows the position at `start_at`, with any `[%cal]`/`[%csl]` drawings on that move; a FEN sequence shows its `start_at` line. `flipped:true` and `pieces:` still apply, and `title:"..."` becomes a caption under the board.
