@@ -44,6 +44,7 @@ export class FenSequenceViewer {
 			this.steps[0].fen,
 			settings,
 			resolvePieceSet(options.pieces ?? settings.fanPieceSet),
+			options.board,
 		);
 		this.buildControls(boardColumn);
 

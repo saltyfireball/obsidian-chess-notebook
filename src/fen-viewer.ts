@@ -14,6 +14,7 @@ export class FenViewer {
 			fen,
 			settings,
 			resolvePieceSet(options.pieces ?? settings.fanPieceSet),
+			options.board,
 		);
 	}
 

@@ -3,9 +3,11 @@ import type { SettingDefinitionItem } from "obsidian";
 import type ChessPlugin from "./main";
 import { DEFAULT_SETTINGS } from "./types";
 import { listPieceSets } from "./fan-pieces";
+import { BOARD_THEMES } from "./board-themes";
 
 const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
+const BOARD_THEME_DESC = "Default board colours. Override per block with board:name.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
 
 // Built by hand: Object.fromEntries is ES2019, past this tsconfig's lib, so
@@ -13,6 +15,12 @@ const PIECE_SET_DESC = "Default piece set for the board and figurine notation. O
 function pieceSetOptions(): Record<string, string> {
 	const options: Record<string, string> = {};
 	for (const s of listPieceSets()) options[s] = s;
+	return options;
+}
+
+function boardThemeOptions(): Record<string, string> {
+	const options: Record<string, string> = {};
+	for (const t of BOARD_THEMES) options[t] = t;
 	return options;
 }
 
@@ -63,8 +71,19 @@ export class ChessSettingTab extends PluginSettingTab {
 			},
 			{
 				type: "group",
-				heading: "Pieces & notation",
+				heading: "Board & pieces",
 				items: [
+					{
+						name: "Board theme",
+						desc: BOARD_THEME_DESC,
+						aliases: ["board", "colours", "colors", "theme"],
+						control: {
+							type: "dropdown",
+							key: "boardTheme",
+							options: boardThemeOptions(),
+							defaultValue: DEFAULT_SETTINGS.boardTheme,
+						},
+					},
 					{
 						name: "Piece set",
 						desc: PIECE_SET_DESC,
@@ -111,7 +130,21 @@ export class ChessSettingTab extends PluginSettingTab {
 				})
 		);
 
-		new Setting(containerEl).setName("Pieces & notation").setHeading();
+		new Setting(containerEl).setName("Board & pieces").setHeading();
+
+		new Setting(containerEl)
+			.setName("Board theme")
+			.setDesc(BOARD_THEME_DESC)
+			.addDropdown((dropdown) => {
+				for (const t of BOARD_THEMES) {
+					dropdown.addOption(t, t);
+				}
+				dropdown.setValue(this.plugin.settings.boardTheme);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.boardTheme = value;
+					await this.plugin.saveSettings();
+				});
+			});
 
 		const pieceSetting = new Setting(containerEl)
 			.setName("Piece set")
@@ -199,6 +232,7 @@ function renderReference(containerEl: HTMLElement): void {
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
+		["board:green|brown|blue|wood|grey", "Board colours for this block (default: the one in the settings)"],
 		["start_at:start|end|N", "Initial position: start, end, or half-move index N counted from 0 (0 is after White's first move)"],
 		['title:"..."', "Display a title in the header bar"],
 		['white:"..."', "Override or set White player name"],
