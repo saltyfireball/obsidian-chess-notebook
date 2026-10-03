@@ -6,7 +6,7 @@ import { drawReason, positionKey } from "./draw";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
-import { drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
+import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
 
@@ -68,6 +68,7 @@ export class PgnViewer {
 	private drillPath: MoveNode[] = [];
 	private drillStatus: HTMLElement | null = null;
 	private drillBranches: string[] = [];
+	private drillRuns = new DrillRuns();
 	private notation: Notation = "san";
 	private pieceSetName: string = STANDARD_PIECE_SET;
 	private pieceSetReady = false;
@@ -1091,6 +1092,7 @@ export class PgnViewer {
 	}
 
 	private startDrillRun(): void {
+		this.drillRuns.next();
 		this.drillComplete = false;
 		this.drillCursor = { line: this.mainlineMoves, idx: 0 };
 		this.drillPath = [];
@@ -1120,14 +1122,14 @@ export class PgnViewer {
 			return;
 		}
 		this.boardManager.disablePuzzleInput();
-		this.later(() => {
+		this.later(this.drillRuns.guard(() => {
 			if (!this.drillMode || this.drillComplete) return;
 			const reply = pickChoice(choices, Math.random);
 			if (!reply) return;
 			if (choices.length > 1) this.noteDrillLine(reply, choices);
 			this.playDrillChoice(reply);
 			this.continueDrill();
-		}, 500);
+		}), 500);
 	}
 
 	private handleDrillMove(from: string, to: string): void {
@@ -1147,11 +1149,11 @@ export class PgnViewer {
 		this.boardManager.flashWrong();
 		this.boardManager.showWrongArrow(from, to);
 		this.boardManager.disablePuzzleInput();
-		this.later(() => {
+		this.later(this.drillRuns.guard(() => {
 			this.boardManager.clearWrongArrow();
 			this.resetBoardPosition();
 			if (this.drillMode && !this.drillComplete) this.enablePuzzleInput();
-		}, 800);
+		}), 800);
 	}
 
 	private playDrillChoice(choice: DrillChoice): void {
