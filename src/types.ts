@@ -31,6 +31,9 @@ export interface CodeBlockOptions {
 	color: "w" | "b" | null;
 	notation: Notation;
 	pieces: string | null;
+	// Drawings for a FEN diagram, as written: arrows:"e2e4,Rd8d1" squares:"d5,Rf7".
+	arrows: string | null;
+	squares: string | null;
 	title: string | null;
 	white: string | null;
 	black: string | null;

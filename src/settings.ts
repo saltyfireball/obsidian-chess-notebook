@@ -199,6 +199,8 @@ function renderReference(containerEl: HTMLElement): void {
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
+		['arrows:"e2e4,Rd8d1"', "FEN: arrows to draw; optional colour letter G, R, Y or B in front (default green)"],
+		['squares:"d5,Rf7"', "FEN: squares to highlight, same colour letters (or d5:red)"],
 		["start_at:start|end|N", "Initial position: start, end, or half-move index N counted from 0 (0 is after White's first move)"],
 		['title:"..."', "Display a title in the header bar"],
 		['white:"..."', "Override or set White player name"],

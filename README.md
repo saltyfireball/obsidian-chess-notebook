@@ -62,6 +62,18 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 ```
 ````
 
+### Arrows and squares on a FEN diagram
+
+`arrows:` and `squares:` draw on a FEN board, for book-style diagrams without a PGN. They use the same colours as `[%cal]` and `[%csl]` in PGN comments: put `G` (green, the default), `R` (red), `Y` (yellow) or `B` (blue) in front of an entry, or the colour name after a colon (`f7:red`). Separate entries with commas. In a FEN sequence the drawings stay for every position.
+
+<img src="docs/media/fen-shapes.png" width="420" alt="A FEN diagram with a red arrow onto f7, a green arrow and highlighted squares">
+
+````markdown
+```chessboard type:fen arrows:"Rc4f7,Gf3e5" squares:"Rf7,Ye5"
+r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4
+```
+````
+
 ### FEN sequences
 
 Several FEN lines in one block become a sequence you step through like a game, one position per line.
@@ -193,6 +205,8 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
+| `arrows:"e2e4,Rd8d1"` | FEN blocks: arrows to draw (see below) |
+| `squares:"d5,Rf7"` | FEN blocks: squares to highlight (see below) |
 | `start_at:start\|end\|N` | Initial position: the start, the end, or index N (see below) |
 | `src:path` | Read the FEN or PGN from a file in the vault, e.g. `src:"Games/Opera Game.pgn"` |
 | `title:"..."` | Title in the header bar |
