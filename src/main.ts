@@ -322,7 +322,7 @@ export default class ChessPlugin extends Plugin {
 			opts.notation = "fan";
 		}
 
-		const piecesMatch = /pieces:(\w+)/i.exec(line);
+		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
 		if (piecesMatch) {
 			opts.pieces = piecesMatch[1].toLowerCase();
 		}

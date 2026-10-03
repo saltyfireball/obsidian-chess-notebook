@@ -1044,7 +1044,8 @@ export class PgnViewer {
 	private getMaxRevealedIndex(): number {
 		if (!this.puzzleMode && !this.stepMode) return this.mainlineMoves.length - 1;
 		if (this.puzzleMode) return this.puzzleHighWater;
-		return this.getCurrentMainlineIndex();
+		// Step mode reveals one move at a time: the next move is always reachable.
+		return Math.min(this.getCurrentMainlineIndex() + 1, this.mainlineMoves.length - 1);
 	}
 
 	private nextMove(): void {
