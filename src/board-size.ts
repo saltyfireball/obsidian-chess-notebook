@@ -15,7 +15,8 @@ const MAX_PX = 1600;
 // width such as 360 or 360px. Null when it is neither, so the default applies.
 export function parseBoardSize(value: string): number | null {
 	const v = value.trim().toLowerCase();
-	if (v in BOARD_SIZES) return BOARD_SIZES[v];
+	// Own keys only, so size:constructor is not read off Object.prototype.
+	if (Object.prototype.hasOwnProperty.call(BOARD_SIZES, v)) return BOARD_SIZES[v];
 	const m = /^(\d+)(?:px)?$/.exec(v);
 	if (!m) return null;
 	return Math.min(MAX_PX, Math.max(MIN_PX, parseInt(m[1])));

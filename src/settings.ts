@@ -3,16 +3,19 @@ import type { SettingDefinitionItem } from "obsidian";
 import type ChessPlugin from "./main";
 import { DEFAULT_SETTINGS } from "./types";
 import { listPieceSets } from "./fan-pieces";
+import { BOARD_THEMES } from "./board-themes";
 import { BOARD_SIZES } from "./board-size";
 
 const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
+const BOARD_THEME_DESC = "Default board colours. Override per block with board:name.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
 const VOLUME = { min: 0, max: 100, step: 5 };
 const SOUNDS_DESC = "Play a short tone for each move and a different one for captures.";
 const VOLUME_DESC = "Loudness of the move sounds.";
 const ANNOUNCE_DESC = "Have screen readers read out each move as you step through a game.";
-const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+const LABELS_DESC = 'Label each square for screen readers with what stands on it, e.g. "e4, white knight".';
+const ALIASES_DESC = "Off by default. When another plugin already renders blocks with that name, the one that loads first keeps them. Takes effect after reloading Obsidian.";
 
 // The code block names rendered besides chessboard, and what each renders as.
 const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [
@@ -33,6 +36,12 @@ function boardSizeOptions(): Record<string, string> {
 function pieceSetOptions(): Record<string, string> {
 	const options: Record<string, string> = {};
 	for (const s of listPieceSets()) options[s] = s;
+	return options;
+}
+
+function boardThemeOptions(): Record<string, string> {
+	const options: Record<string, string> = {};
+	for (const t of BOARD_THEMES) options[t] = t;
 	return options;
 }
 
@@ -100,8 +109,19 @@ export class ChessSettingTab extends PluginSettingTab {
 			},
 			{
 				type: "group",
-				heading: "Pieces & notation",
+				heading: "Board & pieces",
 				items: [
+					{
+						name: "Board theme",
+						desc: BOARD_THEME_DESC,
+						aliases: ["board", "colours", "colors", "theme"],
+						control: {
+							type: "dropdown",
+							key: "boardTheme",
+							options: boardThemeOptions(),
+							defaultValue: DEFAULT_SETTINGS.boardTheme,
+						},
+					},
 					{
 						name: "Piece set",
 						desc: PIECE_SET_DESC,
@@ -136,6 +156,12 @@ export class ChessSettingTab extends PluginSettingTab {
 						desc: ANNOUNCE_DESC,
 						aliases: ["screen reader", "accessibility", "speak", "aria"],
 						control: { type: "toggle", key: "announceMoves", defaultValue: DEFAULT_SETTINGS.announceMoves },
+					},
+					{
+						name: "Square labels",
+						desc: LABELS_DESC,
+						aliases: ["screen reader", "accessibility", "aria", "squares"],
+						control: { type: "toggle", key: "squareLabels", defaultValue: DEFAULT_SETTINGS.squareLabels },
 					},
 				],
 			},
@@ -199,7 +225,21 @@ export class ChessSettingTab extends PluginSettingTab {
 				})
 		);
 
-		new Setting(containerEl).setName("Pieces & notation").setHeading();
+		new Setting(containerEl).setName("Board & pieces").setHeading();
+
+		new Setting(containerEl)
+			.setName("Board theme")
+			.setDesc(BOARD_THEME_DESC)
+			.addDropdown((dropdown) => {
+				for (const t of BOARD_THEMES) {
+					dropdown.addOption(t, t);
+				}
+				dropdown.setValue(this.plugin.settings.boardTheme);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.boardTheme = value;
+					await this.plugin.saveSettings();
+				});
+			});
 
 		const pieceSetting = new Setting(containerEl)
 			.setName("Piece set")
@@ -249,6 +289,16 @@ export class ChessSettingTab extends PluginSettingTab {
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.announceMoves).onChange(async (value) => {
 					this.plugin.settings.announceMoves = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Square labels")
+			.setDesc(LABELS_DESC)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.squareLabels).onChange(async (value) => {
+					this.plugin.settings.squareLabels = value;
 					await this.plugin.saveSettings();
 				})
 			);
@@ -335,9 +385,13 @@ function renderReference(containerEl: HTMLElement): void {
 		["center:true|false", "Center the board horizontally (default: true)"],
 		["mode:normal|puzzle|step|drill", "Start in specified mode"],
 		["color:white|black", "Side you play in drill mode"],
+		["interactive:false", "Static diagram: one position, no controls or move list, for printing and PDF export (also diagram:true)"],
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
+		['arrows:"e2e4,Rd8d1"', "FEN: arrows to draw; optional colour letter G, R, Y or B in front (default green)"],
+		['squares:"d5,Rf7"', "FEN: squares to highlight, same colour letters (or d5:red)"],
+		["board:green|brown|blue|wood|grey", "Board colours for this block (default: the one in the settings)"],
 		["size:small|medium|large|N", "Board width: small (300px), medium (420px), large (560px), or N pixels (default: the Board size setting)"],
 		["start_at:start|end|N", "Initial position: start, end, or half-move index N counted from 0 (0 is after White's first move)"],
 		['game:N|"White vs Black"', "In a PGN with several games, open game N (counted from 1) or the game between those players"],
@@ -383,7 +437,7 @@ function renderReference(containerEl: HTMLElement): void {
 	const a11yRows: [string, string][] = [
 		["Move sounds", "A short tone for each move, a lower one for captures (off by default, volume in settings)"],
 		["Announce moves", 'Screen readers read each move as you step, e.g. "12. Nf3, knight to f3" (off by default)'],
-		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (always on)'],
+		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (off by default)'],
 	];
 	for (const [feature, desc] of a11yRows) {
 		const tr = a11yTbody.createEl("tr");
