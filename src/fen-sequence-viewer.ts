@@ -20,6 +20,7 @@ export class FenSequenceViewer {
 	private wrapper: HTMLElement;
 	private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
 	private timers = new Set<number>();
+	private destroyed = false;
 
 	constructor(
 		container: HTMLElement,
@@ -234,10 +235,16 @@ export class FenSequenceViewer {
 		controls.createDiv({ cls: "sfb-chess-controls-sep" });
 
 		const copyFen: HTMLElement = this.createNavButton(controls, "Copy FEN", ICON_FEN, () =>
-			copyWithFeedback(copyFen, this.steps[this.currentIndex].fen, "FEN", (fn, ms) => this.later(fn, ms)));
+			copyWithFeedback(copyFen, this.steps[this.currentIndex].fen, "FEN", this.copyHooks()));
+	}
+
+	// What a copy button needs from the viewer: its timer, and whether it is still open.
+	private copyHooks() {
+		return { schedule: (fn: () => void, ms: number) => this.later(fn, ms), alive: () => !this.destroyed };
 	}
 
 	private later(fn: () => void, ms: number): void {
+		if (this.destroyed) return;
 		const id = window.setTimeout(() => {
 			this.timers.delete(id);
 			fn();
@@ -336,6 +343,7 @@ export class FenSequenceViewer {
 	}
 
 	destroy(): void {
+		this.destroyed = true;
 		for (const id of this.timers) window.clearTimeout(id);
 		this.timers.clear();
 		if (this.keyboardHandler) {
