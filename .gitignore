@@ -6,3 +6,6 @@ node_modules
 
 # Journal (development notes, not for distribution)
 JOURNAL.md
+
+# README media harness build output
+tools/readme-media/harness.js
