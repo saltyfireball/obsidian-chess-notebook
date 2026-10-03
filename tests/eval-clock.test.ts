@@ -92,6 +92,13 @@ describe("parsePgn with eval and clock", () => {
 		expect(moves[2].variations[0][1].comment).toBeNull();
 	});
 
+	it("keeps an eval written before the first move for the start position", () => {
+		const start = parsePgn("{Book position. [%eval 0.31]} 1.e4 e5 *");
+		expect(start.startingEvaluation).toEqual({ kind: "cp", pawns: 0.31 });
+		expect(start.startingComment).toBe("Book position.");
+		expect(parsePgn("1.e4 e5 *").startingEvaluation).toBeNull();
+	});
+
 	it("finds the latest eval and clocks along the main line and into a variation", () => {
 		expect(latestEvalClock(pathTo(moves, "m-2"))).toEqual({
 			evaluation: { kind: "cp", pawns: 0.3 },
