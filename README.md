@@ -149,7 +149,7 @@ The play button plays the game through at the speed set in the settings. Press i
 
 ### chess, pgn and fen blocks
 
-Notes written for other tools work without edits: `pgn`, `fen` and `chess` code blocks render too. A `pgn` block is a `chessboard type:pgn` block and a `fen` block is a `chessboard type:fen` block. A `chess` block holds either: text with `[Tags]` or move numbers is a PGN, anything else a FEN. All the options work on these blocks as well.
+Notes written for other tools can work without edits: `pgn`, `fen` and `chess` code blocks can render too. These are off by default; turn each one on under Code blocks in the plugin's settings (Render chess blocks, Render pgn blocks, Render fen blocks), then reload Obsidian. A `pgn` block is a `chessboard type:pgn` block and a `fen` block is a `chessboard type:fen` block. A `chess` block holds either: text with `[Tags]` or move numbers is a PGN, anything else a FEN. All the options work on these blocks as well.
 
 <img src="docs/media/pgn-block.png" width="420" alt="A pgn code block rendered as a board">
 
@@ -159,7 +159,7 @@ Notes written for other tools work without edits: `pgn`, `fen` and `chess` code 
 ```
 ````
 
-Each name can be turned off in the settings, for vaults where something else already renders it. Obsidian reads code block names when it loads, so reload it after changing one.
+Only one plugin can render a code block name: when another plugin also renders `pgn`, `fen` or `chess` blocks, whichever loads first keeps them and the other skips that name. Leave a name off when something else in your vault already renders it. Obsidian reads code block names when it loads, so reload it after changing one.
 
 ### Eight piece sets and figurine notation
 
@@ -190,7 +190,7 @@ The settings tab has a How to use page, a quick reference for blocks, header tag
 - **Board size**: the default board width, small, medium or large. Override it per block with `size:`.
 - **Auto-play speed**: time between moves during auto-play.
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
-- **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all on by default). Reload Obsidian after changing one.
+- **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all off by default). Reload Obsidian after changing one.
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
 <img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">

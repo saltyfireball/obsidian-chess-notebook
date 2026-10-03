@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardBlockFor, insideCodeBlock } from "../src/paste-board";
+import { boardBlockFor, editsCodeBlock, insideCodeBlock } from "../src/paste-board";
 
 const FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
@@ -47,5 +47,36 @@ describe("insideCodeBlock", () => {
 	it("only closes on a matching fence", () => {
 		expect(insideCodeBlock(["````", "```", "x"], 2)).toBe(true);
 		expect(insideCodeBlock(["```", "~~~", "x"], 2)).toBe(true);
+	});
+});
+
+describe("editsCodeBlock", () => {
+	const doc = ["text", "```chessboard type:fen", FEN, "```", "after"];
+	const at = (line: number, ch: number) => ({ line, ch });
+
+	it("is false for a caret or selection outside blocks", () => {
+		expect(editsCodeBlock(doc, at(0, 2), at(0, 2))).toBe(false);
+		expect(editsCodeBlock(doc, at(4, 0), at(4, 5))).toBe(false);
+	});
+
+	it("is true for a selection that starts outside and ends inside a block", () => {
+		expect(editsCodeBlock(doc, at(0, 2), at(2, 4))).toBe(true);
+	});
+
+	it("is true for a selection that spans a whole block", () => {
+		expect(editsCodeBlock(doc, at(0, 0), at(4, 2))).toBe(true);
+	});
+
+	it("is true before or within a closing fence, false after it", () => {
+		expect(editsCodeBlock(doc, at(3, 0), at(3, 0))).toBe(true);
+		expect(editsCodeBlock(doc, at(3, 2), at(3, 2))).toBe(true);
+		expect(editsCodeBlock(doc, at(3, 3), at(3, 3))).toBe(false);
+		expect(editsCodeBlock(["```", "x", "```  "], at(2, 3), at(2, 5))).toBe(false);
+	});
+
+	it("is false next to a block, true for a selection starting in a closing fence", () => {
+		expect(editsCodeBlock(doc, at(4, 0), at(4, 0))).toBe(false);
+		expect(editsCodeBlock(["a", "```", "x", "```"], at(0, 0), at(0, 1))).toBe(false);
+		expect(editsCodeBlock(["```", "x", "```", "a"], at(2, 1), at(3, 1))).toBe(true);
 	});
 });

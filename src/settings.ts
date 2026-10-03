@@ -8,7 +8,7 @@ import { BOARD_SIZES } from "./board-size";
 const AUTO_PLAY = { min: 500, max: 5000, step: 100 };
 const AUTO_PLAY_DESC = "Interval in milliseconds between moves during auto-play.";
 const PIECE_SET_DESC = "Default piece set for the board and figurine notation. Override per block with pieces:name.";
-const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+const ALIASES_DESC = "Off by default. When another plugin already renders blocks with that name, the one that loads first keeps them. Takes effect after reloading Obsidian.";
 
 // The code block names rendered besides chessboard, and what each renders as.
 const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [

@@ -1,5 +1,5 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
-import { boardBlockFor, insideCodeBlock } from "./paste-board";
+import { boardBlockFor, editsCodeBlock } from "./paste-board";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
@@ -114,7 +114,8 @@ export default class ChessPlugin extends Plugin {
 		try {
 			this.registerMarkdownCodeBlockProcessor(language, handler);
 		} catch (e: unknown) {
-			// Another processor already owns this name; leave it to that one.
+			// Obsidian throws when another plugin loaded first and owns this name;
+			// leave its blocks to it.
 			console.warn(`chess-notebook: could not register ${language} code blocks`, e);
 		}
 	}
@@ -136,9 +137,11 @@ export default class ChessPlugin extends Plugin {
 			id: "paste-as-board",
 			name: "Paste a chess position or game as a board",
 			editorCallback: async (editor: Editor) => {
-				const cursor = editor.getCursor("from");
-				if (insideCodeBlock(editor.getValue().split("\n"), cursor.line)) {
-					new Notice("Place the caret outside the code block first.");
+				const editsBlock = () =>
+					editsCodeBlock(editor.getValue().split("\n"), editor.getCursor("from"), editor.getCursor("to"));
+				const refuse = () => new Notice("Place the caret outside the code block first.");
+				if (editsBlock()) {
+					refuse();
 					return;
 				}
 				let text: string;
@@ -148,6 +151,12 @@ export default class ChessPlugin extends Plugin {
 					new Notice("Could not read the clipboard.");
 					return;
 				}
+				// The note or the selection may have changed while the clipboard was read.
+				if (editsBlock()) {
+					refuse();
+					return;
+				}
+				const cursor = editor.getCursor("from");
 				const block = boardBlockFor(text, editor.getLine(cursor.line).slice(0, cursor.ch).trim().length > 0);
 				if (!block) {
 					new Notice("The clipboard holds no chess position or game.");
