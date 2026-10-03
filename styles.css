@@ -252,6 +252,35 @@
     aspect-ratio: 1;
 }
 
+/* Static diagram (interactive:false): a plain board with an optional caption */
+.sfb-chess-static {
+    background: none;
+}
+
+.sfb-chess-static-caption {
+    padding: 6px 8px;
+    text-align: center;
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+@media print {
+    .sfb-chess-static {
+        break-inside: avoid;
+        border-color: #999;
+    }
+
+    /* Printers drop background colours by default; keep the squares. */
+    .sfb-chess-static .cm-chessboard {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .sfb-chess-static-caption {
+        color: #000;
+    }
+}
+
 /* PGN viewer: board + sidebar layout */
 .sfb-chess-pgn {
     max-width: calc(var(--sfb-board-size, 420px) + 360px);

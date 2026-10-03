@@ -3,6 +3,8 @@ import { boardBlockFor, insideCodeBlock } from "./paste-board";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
+import { StaticViewer } from "./static-viewer";
+import { staticFenPosition, staticPgnPosition } from "./static-position";
 import { GamePickerViewer } from "./game-picker";
 import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
@@ -238,12 +240,10 @@ export default class ChessPlugin extends Plugin {
 			// removing size: from a block puts it back to the default.
 			el.setCssProps({ "--sfb-board-size": `${resolveBoardSize(parsed.options.size, this.settings.boardSize)}px` });
 
-			if (parsed.type === "fen") {
-				const fens = content
-					.split("\n")
-					.map((l) => l.trim())
-					.filter((l) => l.length > 0 && looksLikeFen(l))
-					.map((l) => normalizeFen(l));
+			if (parsed.options.diagram) {
+				child.setViewer(this.createStaticViewer(el, parsed.type, content, parsed.options));
+			} else if (parsed.type === "fen") {
+				const fens = this.parseFens(content);
 
 				if (fens.length > 1) {
 					child.setViewer(new FenSequenceViewer(el, fens, parsed.options, this.settings));
@@ -263,6 +263,29 @@ export default class ChessPlugin extends Plugin {
 			this.clearBlock(el);
 			el.createDiv({ cls: "sfb-chess-error", text: "Chessboard error: " + msg });
 		}
+	}
+
+	private createStaticViewer(
+		el: HTMLElement,
+		type: "fen" | "pgn",
+		content: string,
+		options: CodeBlockOptions,
+	): StaticViewer {
+		if (type === "pgn") {
+			const { fen, shapes } = staticPgnPosition(content, options.startAt);
+			return new StaticViewer(el, fen, shapes, options, this.settings);
+		}
+		const fens = this.parseFens(content);
+		const fen = fens.length > 0 ? staticFenPosition(fens, options.startAt) : normalizeFen(content.trim());
+		return new StaticViewer(el, fen, { arrows: [], squares: [] }, options, this.settings);
+	}
+
+	private parseFens(content: string): string[] {
+		return content
+			.split("\n")
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0 && looksLikeFen(l))
+			.map((l) => normalizeFen(l));
 	}
 
 	// Destroys the block's current viewer before its DOM is replaced.
@@ -350,6 +373,7 @@ export default class ChessPlugin extends Plugin {
 			mode: "normal",
 			startAt: "start",
 			flipped: false,
+			diagram: false,
 			color: null,
 			notation: "san",
 			pieces: null,
@@ -383,6 +407,10 @@ export default class ChessPlugin extends Plugin {
 		const boolMatch = /center:(true|false)/i.exec(line);
 		if (boolMatch && boolMatch[1].toLowerCase() === "false") {
 			opts.center = false;
+		}
+
+		if (/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i.test(line)) {
+			opts.diagram = true;
 		}
 
 		const flippedMatch = /flipped:(true|false)/i.exec(line);
@@ -520,6 +548,7 @@ export default class ChessPlugin extends Plugin {
 			mode: inline.mode !== "normal" ? inline.mode : fence.mode,
 			startAt: inline.startAt !== "start" ? inline.startAt : fence.startAt,
 			flipped: inline.flipped || fence.flipped,
+			diagram: inline.diagram || fence.diagram,
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,

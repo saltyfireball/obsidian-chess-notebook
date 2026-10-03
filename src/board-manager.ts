@@ -258,10 +258,10 @@ export class BoardManager {
 		this.board.removeMarkers(LAST_MOVE_DARK);
 	}
 
-	flip(): void {
+	flip(animated: boolean = true): void {
 		const current = this.board.getOrientation();
 		const next = current === COLOR.white ? COLOR.black : COLOR.white;
-		void this.board.setOrientation(next, true).then(() => this.replacePieces());
+		void this.board.setOrientation(next, animated).then(() => this.replacePieces());
 	}
 
 	getOrientation(): string {
