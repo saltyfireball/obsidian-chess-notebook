@@ -1,5 +1,6 @@
 import { BoardManager } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { parseShapeOptions } from "./pgn-parser";
 import type { ChessSettings, CodeBlockOptions } from "./types";
 
 export class FenViewer {
@@ -16,6 +17,7 @@ export class FenViewer {
 			resolvePieceSet(options.pieces ?? settings.fanPieceSet),
 			options.board,
 		);
+		this.boardManager.showShapes(parseShapeOptions(options.arrows, options.squares));
 	}
 
 	destroy(): void {

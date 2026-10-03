@@ -353,6 +353,8 @@ export default class ChessPlugin extends Plugin {
 			color: null,
 			notation: "san",
 			pieces: null,
+			arrows: null,
+			squares: null,
 			board: null,
 			size: null,
 			title: null,
@@ -409,6 +411,16 @@ export default class ChessPlugin extends Plugin {
 		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
 		if (piecesMatch) {
 			opts.pieces = piecesMatch[1].toLowerCase();
+		}
+
+		const arrowsMatch = /(?:^|\s)arrows:(?:"([^"]*)"|(\S+))/i.exec(line);
+		if (arrowsMatch) {
+			opts.arrows = arrowsMatch[1] ?? arrowsMatch[2];
+		}
+
+		const squaresMatch = /(?:^|\s)squares:(?:"([^"]*)"|(\S+))/i.exec(line);
+		if (squaresMatch) {
+			opts.squares = squaresMatch[1] ?? squaresMatch[2];
 		}
 
 		const boardMatch = /(?:^|\s)board:([\w-]+)/i.exec(line);
@@ -511,6 +523,8 @@ export default class ChessPlugin extends Plugin {
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,
+			arrows: inline.arrows ?? fence.arrows,
+			squares: inline.squares ?? fence.squares,
 			board: inline.board ?? fence.board,
 			size: inline.size ?? fence.size,
 			title: inline.title ?? fence.title,

@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { BoardManager } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
+import { parseShapeOptions } from "./pgn-parser";
 import { copyWithFeedback, ICON_FEN } from "./clipboard";
 import type { ChessSettings, CodeBlockOptions } from "./types";
 
@@ -46,6 +47,8 @@ export class FenSequenceViewer {
 			resolvePieceSet(options.pieces ?? settings.fanPieceSet),
 			options.board,
 		);
+		// The drawings stay on the board for every position in the sequence.
+		this.boardManager.showShapes(parseShapeOptions(options.arrows, options.squares));
 		this.buildControls(boardColumn);
 
 		const sidebar = content.createDiv({ cls: "sfb-chess-sidebar" });
