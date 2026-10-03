@@ -7,6 +7,7 @@ import { flattenMoves, type FlatMove } from "./flat-moves";
 import { copyWithFeedback, ICON_COPY, ICON_FEN } from "./clipboard";
 import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { hintSteps } from "./hints";
+import { EvalClockView } from "./eval-clock-view";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import type { ChessSettings, CodeBlockOptions, PgnHeaders, ChessMode, Notation } from "./types";
@@ -27,6 +28,7 @@ export class PgnViewer {
 	private startingComment: string | null = null;
 	private startingShapes: BoardShapes = { arrows: [], squares: [] };
 	private drawBadge: HTMLElement;
+	private evalClock: EvalClockView | null = null;
 	private title: string | null = null;
 	private headers: PgnHeaders;
 	private moveElements: Map<string, HTMLElement> = new Map();
@@ -132,6 +134,7 @@ export class PgnViewer {
 		settings: ChessSettings,
 	): void {
 		this.pieceSetReady = this.notation === "fan";
+		this.evalClock = EvalClockView.create(boardWrapper, this.mainlineMoves, this.headers);
 		this.boardManager = new BoardManager(boardWrapper, this.startingFen, settings, this.pieceSetName);
 		this.drawBadge = boardWrapper.createDiv({ cls: "sfb-chess-draw-badge" });
 		this.updateDrawBadge(this.startingFen, 1);
@@ -152,6 +155,8 @@ export class PgnViewer {
 		this.buildMoveList();
 		this.boardManager.showShapes(this.startingShapes);
 		this.applyStartAt(options.startAt);
+		// The board now faces puzzleColor.
+		this.evalClock?.setFlipped(this.puzzleColor === "b");
 		this.updateActiveComment();
 
 		if (this.initialMode === "drill") {
@@ -941,6 +946,7 @@ export class PgnViewer {
 			this.boardManager.showShapes(node.shapes);
 			this.updateDrawBadge(node.fen, flat.repeats);
 		}
+		this.evalClock?.show(flat ? flat.id : null);
 	}
 
 	private updateDrawBadge(fen: string, repeats: number): void {
@@ -1332,6 +1338,7 @@ export class PgnViewer {
 
 	private flip(): void {
 		this.boardManager.flip();
+		this.evalClock?.setFlipped(null);
 	}
 
 	private updateActiveMove(): void {

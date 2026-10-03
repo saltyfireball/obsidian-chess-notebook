@@ -50,6 +50,17 @@ Paste a PGN and get a board with a header (players, event, site, date, ECO, resu
 
 A `[FEN "..."]` tag starts the game from that position instead of the opening position.
 
+### Eval bar and clocks
+
+Games exported from game sites carry `[%eval 0.35]` / `[%eval #3]` and `[%clk 0:03:00]` in their comments. These are taken out of the comment text: an eval bar beside the board shows the evaluation after each move (mate scores fill the bar for the side that mates), and each side's clock shows above and below the board as you step through. Both are hidden when the PGN has none. Nothing is computed: only what the PGN already contains is shown.
+
+````markdown
+```chessboard type:pgn
+1. e4 { [%eval 0.2] [%clk 0:03:00] } 1... e5 { [%eval 0.3] [%clk 0:02:59] }
+2. Nf3 { [%eval 0.25] [%clk 0:02:55] } 2... Nc6 { [%eval 0.3] [%clk 0:02:50] } *
+```
+````
+
 ### Positions from FEN
 
 One FEN line shows one position. A board-only FEN, as printed in books (`r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR`), works too.
