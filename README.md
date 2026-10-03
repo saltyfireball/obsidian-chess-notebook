@@ -136,6 +136,10 @@ Puzzle mode hides the moves. Play the next move on the board; picking up a piece
 
 You can also switch any board into puzzle mode with the puzzle button under it.
 
+### Reviewing every puzzle in the vault
+
+The command **Review puzzles from the vault** gathers every `mode:puzzle` block from your notes (a `src:` block reads its file), shuffles them and serves them one at a time in a window: "Puzzle 3 of 12", the board in puzzle mode with Hint and reset, and a link to the note the puzzle is in. Skip moves on; once a puzzle is solved the button reads Next. After the last one you can shuffle again. Your notes are the deck: nothing is written back to them.
+
 ### Drill mode
 
 Drill mode is for practising an opening. With `mode:drill color:white` (or `color:black`) you play your side and the board plays the other, picking its replies from the main line and the variations, so each run can go down a different line. A move the PGN does not have is shown as a red arrow and undone. Where the PGN gives more than one move for your side, any of them is accepted and the line the run follows is shown under the board. Hint works as in puzzle mode, the reset button starts a new run, and when the line runs out you get the same report as a puzzle, with the moves list shown again. Nothing is written back to the note.

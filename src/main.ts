@@ -1,5 +1,7 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
 import { boardBlockFor, insideCodeBlock } from "./paste-board";
+import { findChessBlocks } from "./puzzle-review";
+import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
@@ -70,6 +72,12 @@ export default class ChessPlugin extends Plugin {
 		this.addSettingTab(new ChessSettingTab(this.app, this));
 		this.addPasteCommand();
 		injectSprites(document);
+
+		this.addCommand({
+			id: "review-vault-puzzles",
+			name: "Review puzzles from the vault",
+			callback: () => void this.reviewVaultPuzzles(),
+		});
 
 		// Lets .pgn / .fen files open in Obsidian's editor, so a src: block can be
 		// edited side by side with the board it renders.
@@ -365,6 +373,45 @@ export default class ChessPlugin extends Plugin {
 			if (!block.el.isConnected) continue;
 			void this.processCodeBlock(block.source, block.el, block.fenceLine, block.sourcePath);
 		}
+	}
+
+	// Gathers every mode:puzzle block in the vault and serves them in a modal.
+	private async reviewVaultPuzzles(): Promise<void> {
+		const puzzles = await this.collectPuzzles();
+		if (puzzles.length === 0) {
+			new Notice("No mode:puzzle chessboard blocks found in the vault.");
+			return;
+		}
+		new PuzzleReviewModal(this.app, puzzles, this.settings, (puzzle) => {
+			const file = this.app.vault.getAbstractFileByPath(puzzle.path);
+			if (file instanceof TFile) {
+				void this.app.workspace.getLeaf(false).openFile(file, { eState: { line: puzzle.line } });
+			}
+		}).open();
+	}
+
+	// Reads each note and keeps the PGN blocks whose options (parsed the same
+	// way a rendered block's are) say mode:puzzle. A src: block reads its file.
+	private async collectPuzzles(): Promise<ReviewPuzzle[]> {
+		const puzzles: ReviewPuzzle[] = [];
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			const text = await this.app.vault.cachedRead(file);
+			if (!text.toLowerCase().includes("chessboard")) continue;
+			for (const block of findChessBlocks(text)) {
+				const parsed = this.parseCodeBlock(block.source, block.fenceLine);
+				if (!parsed || parsed.type !== "pgn" || parsed.options.mode !== "puzzle") continue;
+				let pgn = parsed.content;
+				if (parsed.options.src) {
+					try {
+						pgn = await this.readChessFile(this.resolveSrcPath(parsed.options.src, file.path));
+					} catch {
+						continue;
+					}
+				}
+				puzzles.push({ path: file.path, line: block.line, pgn, options: parsed.options });
+			}
+		}
+		return puzzles;
 	}
 
 	private parseOptions(line: string): CodeBlockOptions {
