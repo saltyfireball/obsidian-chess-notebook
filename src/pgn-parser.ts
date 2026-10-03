@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { NAG_CODE_MAP, UNICODE_NAG_REGEX, UNICODE_NAG_MAP } from "./nag-data";
 import { normalizeFen } from "./types";
+import { extractEvalClock, type Evaluation } from "./eval-clock";
 
 export interface MoveNode {
 	san: string;
@@ -13,6 +14,10 @@ export interface MoveNode {
 	nag: string | null;
 	variations: MoveNode[][];
 	shapes: BoardShapes;
+	// From [%eval] and [%clk] in the comment: the eval after this move and
+	// the mover's clock in seconds.
+	evaluation: Evaluation | null;
+	clock: number | null;
 }
 
 export type ShapeColor = "G" | "R" | "Y" | "B";
@@ -336,6 +341,8 @@ function parseMoveSequence(
 					nag: null,
 					variations: [],
 					shapes: { arrows: [], squares: [] },
+					evaluation: null,
+					clock: null,
 				});
 			} catch {
 				// Invalid move - skip
@@ -459,9 +466,12 @@ export function hasDrawingsOnly(node: MoveNode): boolean {
 
 function applyShapes(moves: MoveNode[]): void {
 	for (const move of moves) {
-		const { text, shapes } = extractShapes(move.comment);
+		const { text: rest, evaluation, clock } = extractEvalClock(move.comment);
+		const { text, shapes } = extractShapes(rest);
 		move.comment = text;
 		move.shapes = shapes;
+		move.evaluation = evaluation;
+		move.clock = clock;
 		for (const variation of move.variations) applyShapes(variation);
 	}
 }
@@ -476,7 +486,7 @@ export function parsePgn(pgn: string): ParsedPgn {
 	const pos = { idx: 0 };
 	const { moves, startingComment: rawStartingComment } = parseMoveSequence(tokens, pos, chess);
 	applyShapes(moves);
-	const { text: startingComment, shapes: startingShapes } = extractShapes(rawStartingComment);
+	const { text: startingComment, shapes: startingShapes } = extractShapes(extractEvalClock(rawStartingComment).text);
 
 	let result: string | null = null;
 	for (const token of tokens) {

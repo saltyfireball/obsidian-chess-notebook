@@ -45,6 +45,7 @@ export class FenSequenceViewer {
 			this.steps[0].fen,
 			settings,
 			resolvePieceSet(options.pieces ?? settings.fanPieceSet),
+			options.board,
 		);
 		// The drawings stay on the board for every position in the sequence.
 		this.boardManager.showShapes(parseShapeOptions(options.arrows, options.squares));

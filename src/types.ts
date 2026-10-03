@@ -1,25 +1,45 @@
 import type { ArrowType, MarkerType } from "cm-chessboard/src/Chessboard.js";
 
 export interface ChessSettings {
+	// A board colour theme from board-themes.ts.
 	boardTheme: string;
 	showCoordinates: boolean;
 	animationDuration: number;
 	autoPlaySpeed: number;
 	fanPieceSet: string;
+	moveSounds: boolean;
+	soundVolume: number;
+	announceMoves: boolean;
+	// Also render chess, pgn and fen code blocks. Read once at load.
+	chessBlocks: boolean;
+	pgnBlocks: boolean;
+	fenBlocks: boolean;
+	// small, medium or large; a block's size: option overrides it.
+	boardSize: string;
 }
 
 export const DEFAULT_SETTINGS: ChessSettings = {
-	boardTheme: "sfb-chess",
+	boardTheme: "green",
 	showCoordinates: true,
 	animationDuration: 200,
 	autoPlaySpeed: 1500,
 	fanPieceSet: "standard",
+	moveSounds: false,
+	soundVolume: 50,
+	announceMoves: false,
+	chessBlocks: true,
+	pgnBlocks: true,
+	fenBlocks: true,
+	boardSize: "medium",
 };
 
 export type ChessMode = "normal" | "puzzle" | "step" | "drill";
 
 export type Notation = "san" | "fan";
 
+// A number is a zero-based index: a mainline half-move in a PGN (0 is the
+// position after White's first move), a step in a FEN sequence. Kept as an
+// index so existing notes keep opening on the same position.
 export type StartAt = "start" | "end" | number;
 
 export interface CodeBlockOptions {
@@ -34,6 +54,10 @@ export interface CodeBlockOptions {
 	// Drawings for a FEN diagram, as written: arrows:"e2e4,Rd8d1" squares:"d5,Rf7".
 	arrows: string | null;
 	squares: string | null;
+	// A board colour theme; null: the one in the settings.
+	board: string | null;
+	// Board width in pixels from size:; null: the settings default.
+	size: number | null;
 	title: string | null;
 	white: string | null;
 	black: string | null;
@@ -44,6 +68,8 @@ export interface CodeBlockOptions {
 	eco: string | null;
 	result: string | null;
 	src: string | null;
+	// The game to open in a PGN with several: 1-based number or "White vs Black".
+	game: number | string | null;
 }
 
 export const HINT_FROM_LIGHT: MarkerType = {
@@ -54,6 +80,20 @@ export const HINT_FROM_LIGHT: MarkerType = {
 export const HINT_FROM_DARK: MarkerType = {
 	class: "marker-hint-from-dark",
 	slice: "markerSquare",
+};
+
+// Where the picked-up piece can go in puzzle and drill mode: a dot on an
+// empty square, a ring around a piece it can take.
+export const LEGAL_MOVE_DOT: MarkerType = {
+	class: "marker-legal-dot",
+	slice: "markerDot",
+	position: "above",
+};
+
+export const LEGAL_MOVE_CAPTURE: MarkerType = {
+	class: "marker-legal-capture",
+	slice: "markerCircle",
+	position: "above",
 };
 
 // The last hint step: the move to find, as an arrow.
@@ -97,6 +137,12 @@ export const LAST_MOVE_LIGHT: MarkerType = {
 
 export const LAST_MOVE_DARK: MarkerType = {
 	class: "marker-lastmove-dark",
+	slice: "markerSquare",
+};
+
+// The square of a king in check.
+export const CHECK_MARKER: MarkerType = {
+	class: "marker-check",
 	slice: "markerSquare",
 };
 

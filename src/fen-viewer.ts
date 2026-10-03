@@ -15,6 +15,7 @@ export class FenViewer {
 			fen,
 			settings,
 			resolvePieceSet(options.pieces ?? settings.fanPieceSet),
+			options.board,
 		);
 		this.boardManager.showShapes(parseShapeOptions(options.arrows, options.squares));
 	}
