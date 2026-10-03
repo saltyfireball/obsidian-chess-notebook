@@ -180,7 +180,7 @@ function renderReference(containerEl: HTMLElement): void {
 
 	new Setting(containerEl).setName("Available parameters").setHeading();
 
-	const optsDesc = containerEl.createDiv();
+	const optsDesc = containerEl.createDiv({ cls: "sfb-chess-settings-usage" });
 	optsDesc.createEl("p", {
 		text: 'Add options on the header line. Quoted values use key:"value" syntax.',
 	});

@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-chess-notebook",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Interactive chessboards from FEN and PGN code blocks.",
 	"main": "main.js",
 	"type": "module",
