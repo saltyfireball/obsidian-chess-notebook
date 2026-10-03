@@ -883,3 +883,43 @@
     border-radius: 6px;
     border: 1px solid var(--background-modifier-border);
 }
+
+/* ============================================================
+   Review puzzles from the vault (modal)
+   ============================================================ */
+
+.modal.sfb-chess-review-modal {
+    width: min(760px, 95vw);
+}
+
+.sfb-chess-review-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: var(--font-ui-small);
+}
+
+.sfb-chess-review-count {
+    font-weight: 600;
+}
+
+.sfb-chess-review-source {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sfb-chess-review-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.sfb-chess-review-done {
+    padding: 24px 0;
+    text-align: center;
+}
