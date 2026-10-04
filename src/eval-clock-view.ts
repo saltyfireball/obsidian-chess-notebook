@@ -1,5 +1,5 @@
 import type { MoveNode } from "./pgn-parser";
-import { evalLabel, formatClock, hasEvalClock, latestEvalClock, linePath, whiteShare } from "./eval-clock";
+import { evalLabel, formatClock, hasEvalClock, latestEvalClock, linePath, whiteShare, type Evaluation } from "./eval-clock";
 
 // The eval bar beside the board and each side's clock above and below it,
 // from the [%eval] / [%clk] the PGN carries. Absent when it carries neither.
@@ -19,10 +19,12 @@ export class EvalClockView {
 		boardWrapper: HTMLElement,
 		mainline: MoveNode[],
 		names: { white: string | null; black: string | null },
+		startingEvaluation: Evaluation | null = null,
 	): EvalClockView | null {
 		const found = hasEvalClock(mainline);
+		if (startingEvaluation) found.evaluation = true;
 		if (!found.evaluation && !found.clock) return null;
-		return new EvalClockView(boardWrapper, mainline, names, found);
+		return new EvalClockView(boardWrapper, mainline, names, found, startingEvaluation);
 	}
 
 	private constructor(
@@ -30,6 +32,7 @@ export class EvalClockView {
 		private mainline: MoveNode[],
 		private names: { white: string | null; black: string | null },
 		found: { evaluation: boolean; clock: boolean },
+		private startingEvaluation: Evaluation | null = null,
 	) {
 		const column = boardWrapper.parentElement;
 		if (!column) return;
@@ -75,7 +78,15 @@ export class EvalClockView {
 		const { path, lineStart } = this.currentId ? linePath(this.mainline, this.currentId) : { path: [], lineStart: 0 };
 		const latest = latestEvalClock(path, lineStart);
 		const { white, black } = latest;
-		const evaluation = this.evalHidden ? null : latest.evaluation;
+		let found = latest.evaluation;
+		let stale = latest.stale;
+		// The start position's eval, from a comment before move 1. The main line
+		// carries it (dimmed) until a move has its own; variations do not.
+		if (!found && lineStart === 0 && this.startingEvaluation) {
+			found = this.startingEvaluation;
+			stale = path.length > 0;
+		}
+		const evaluation = this.evalHidden ? null : found;
 		const whiteBottom = !this.flipped;
 
 		if (this.bar && this.barWhite && this.barLabel) {
@@ -85,7 +96,7 @@ export class EvalClockView {
 			this.barWhite.style.height = `${(share * 100).toFixed(1)}%`;
 			this.barLabel.setText(evaluation ? evalLabel(evaluation) : "");
 			// Carried over from an earlier move in this line: shown dimmed.
-			this.barLabel.toggleClass("is-stale", latest.stale);
+			this.barLabel.toggleClass("is-stale", stale);
 			// The label sits at the end of the side that is ahead.
 			this.barLabel.toggleClass("is-white", share >= 0.5);
 			this.barLabel.toggleClass("is-top", (share >= 0.5) !== whiteBottom);

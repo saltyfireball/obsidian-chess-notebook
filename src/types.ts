@@ -51,6 +51,8 @@ export interface CodeBlockOptions {
 	flipped: boolean;
 	// interactive:false or diagram:true: one position, no controls or move list.
 	diagram: boolean;
+	// explore:false: dragging a piece does not start a line of your own.
+	explore: boolean;
 	// The side you play in drill mode; null: White, or Black when flipped.
 	color: "w" | "b" | null;
 	notation: Notation;

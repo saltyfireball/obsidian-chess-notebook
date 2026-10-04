@@ -10,6 +10,7 @@ import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { HintProgress } from "./hints";
 import { legalTargets } from "./legal-moves";
 import { EvalClockView } from "./eval-clock-view";
+import type { Evaluation } from "./eval-clock";
 import { BoardExplorer } from "./board-explorer";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
@@ -34,6 +35,7 @@ export class PgnViewer {
 	private startingFen: string;
 	private startingComment: string | null = null;
 	private startingShapes: BoardShapes = { arrows: [], squares: [] };
+	private startingEvaluation: Evaluation | null = null;
 	private drawBadge: HTMLElement;
 	private evalClock: EvalClockView | null = null;
 	private title: string | null = null;
@@ -74,6 +76,8 @@ export class PgnViewer {
 	private drillRuns = new DrillRuns();
 	// The reader's own line from the current position, in normal mode.
 	private explorer: BoardExplorer | null = null;
+	// False with explore:false: dragging a piece in normal mode does nothing.
+	private exploreAllowed = true;
 	private notation: Notation = "san";
 	private pieceSetName: string = STANDARD_PIECE_SET;
 	private pieceSetReady = false;
@@ -119,6 +123,7 @@ export class PgnViewer {
 		this.startingFen = parsed.startingFen;
 		this.startingComment = parsed.startingComment;
 		this.startingShapes = parsed.startingShapes;
+		this.startingEvaluation = parsed.startingEvaluation;
 		this.mainlineMoves = parsed.moves;
 		this.result = parsed.result;
 		this.initialMode = options.mode;
@@ -150,7 +155,7 @@ export class PgnViewer {
 		settings: ChessSettings,
 	): void {
 		this.pieceSetReady = this.notation === "fan";
-		this.evalClock = EvalClockView.create(boardWrapper, this.mainlineMoves, this.headers);
+		this.evalClock = EvalClockView.create(boardWrapper, this.mainlineMoves, this.headers, this.startingEvaluation);
 		this.boardManager = new BoardManager(boardWrapper, this.startingFen, settings, this.pieceSetName, options.board);
 		this.drawBadge = boardWrapper.createDiv({ cls: "sfb-chess-draw-badge" });
 		this.updateDrawBadge(this.startingFen, 1);
@@ -179,6 +184,7 @@ export class PgnViewer {
 		this.evalClock?.setFlipped(this.puzzleColor === "b");
 		this.updateActiveComment();
 
+		this.exploreAllowed = options.explore;
 		this.createExplorer(boardColumn);
 		if (this.initialMode === "drill") {
 			this.activateDrillMode();
@@ -1001,6 +1007,9 @@ export class PgnViewer {
 		if (nextOpponentIdx < this.mainlineMoves.length) {
 			this.boardManager.disablePuzzleInput();
 			this.later(() => {
+				// The reader left puzzle mode (or reset it) during the pause:
+				// the board, and its input, are no longer this puzzle's.
+				if (!this.puzzleMode || this.getCurrentMainlineIndex() !== idx) return;
 				if (nextOpponentIdx > this.puzzleHighWater) this.puzzleHighWater = nextOpponentIdx;
 				this.updateMoveVisibility();
 				const opponentId = "m-" + nextOpponentIdx;
@@ -1108,13 +1117,17 @@ export class PgnViewer {
 	private createExplorer(boardColumn: HTMLElement): void {
 		this.explorer = new BoardExplorer(this.boardManager, boardColumn, {
 			baseFen: () => this.getCurrentFen(),
+			// Auto-play would move the game under the held piece.
+			onPickUp: () => this.stopAutoPlay(),
 			onEnter: () => {
 				this.stopAutoPlay();
 				this.movesContainer.addClass("sfb-chess-moves-paused");
+				boardColumn.addClass("sfb-chess-exploring");
 			},
 			onPosition: (fen) => this.updateDrawBadge(fen, 1),
 			onExit: () => {
 				this.movesContainer.removeClass("sfb-chess-moves-paused");
+				boardColumn.removeClass("sfb-chess-exploring");
 				this.resetBoardPosition();
 			},
 		});
@@ -1122,7 +1135,7 @@ export class PgnViewer {
 
 	// Explore input is on only while no mode owns the board.
 	private enableExplore(): void {
-		if (this.puzzleMode || this.stepMode || this.drillMode) return;
+		if (!this.exploreAllowed || this.puzzleMode || this.stepMode || this.drillMode) return;
 		this.explorer?.enable();
 	}
 

@@ -32,3 +32,12 @@ export function staticPgnPosition(pgn: string, startAt: StartAt): StaticPosition
 	const move = moves[pickIndex(startAt, moves.length)];
 	return { fen: move.fen, shapes: move.shapes };
 }
+
+// What a screen reader hears for a static diagram: its title (or "Chess
+// diagram"), the side to move and the position as FEN. The squares keep their
+// own labels inside it.
+export function staticBoardLabel(title: string | null, fen: string): string {
+	const side = fen.split(" ")[1] === "b" ? "Black" : "White";
+	const name = title?.trim() || "Chess diagram";
+	return `${name}, ${side} to move, FEN ${fen}`;
+}
