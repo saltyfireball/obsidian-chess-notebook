@@ -14,7 +14,8 @@ const VOLUME = { min: 0, max: 100, step: 5 };
 const SOUNDS_DESC = "Play a short tone for each move and a different one for captures.";
 const VOLUME_DESC = "Loudness of the move sounds.";
 const ANNOUNCE_DESC = "Have screen readers read out each move as you step through a game.";
-const ALIASES_DESC = "Turn one off when another plugin already renders blocks with that name. Takes effect after reloading Obsidian.";
+const LABELS_DESC = 'Label each square for screen readers with what stands on it, e.g. "e4, white knight".';
+const ALIASES_DESC = "Off by default. When another plugin already renders blocks with that name, the one that loads first keeps them. Takes effect after reloading Obsidian.";
 
 // The code block names rendered besides chessboard, and what each renders as.
 const ALIAS_TOGGLES: { key: "chessBlocks" | "pgnBlocks" | "fenBlocks"; name: string; desc: string }[] = [
@@ -156,6 +157,12 @@ export class ChessSettingTab extends PluginSettingTab {
 						aliases: ["screen reader", "accessibility", "speak", "aria"],
 						control: { type: "toggle", key: "announceMoves", defaultValue: DEFAULT_SETTINGS.announceMoves },
 					},
+					{
+						name: "Square labels",
+						desc: LABELS_DESC,
+						aliases: ["screen reader", "accessibility", "aria", "squares"],
+						control: { type: "toggle", key: "squareLabels", defaultValue: DEFAULT_SETTINGS.squareLabels },
+					},
 				],
 			},
 			{
@@ -282,6 +289,16 @@ export class ChessSettingTab extends PluginSettingTab {
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.announceMoves).onChange(async (value) => {
 					this.plugin.settings.announceMoves = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Square labels")
+			.setDesc(LABELS_DESC)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.squareLabels).onChange(async (value) => {
+					this.plugin.settings.squareLabels = value;
 					await this.plugin.saveSettings();
 				})
 			);
@@ -421,7 +438,7 @@ function renderReference(containerEl: HTMLElement): void {
 	const a11yRows: [string, string][] = [
 		["Move sounds", "A short tone for each move, a lower one for captures (off by default, volume in settings)"],
 		["Announce moves", 'Screen readers read each move as you step, e.g. "12. Nf3, knight to f3" (off by default)'],
-		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (always on)'],
+		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (off by default)'],
 	];
 	for (const [feature, desc] of a11yRows) {
 		const tr = a11yTbody.createEl("tr");
