@@ -86,6 +86,23 @@ describe("aliasBlock", () => {
 		});
 	});
 
+	it("puts the fence's type on a src: header when the fence has one", () => {
+		expect(aliasBlock("chess", "type:pgn", 'src:"Games/Opera.pgn"')).toEqual({
+			fenceLine: "type:pgn",
+			source: 'type:pgn src:"Games/Opera.pgn"',
+		});
+		// The fence's explicit type wins over the file's extension.
+		expect(aliasBlock("chess", "type:fen", "src:Games/a.pgn\n")).toEqual({
+			fenceLine: "type:fen",
+			source: "type:fen src:Games/a.pgn\n",
+		});
+	});
+
+	it("does not take a src: inside a quoted title as a header", () => {
+		const source = 'title:"see src:a.pgn"\n1.e4 e5 *';
+		expect(aliasBlock("chess", "type:pgn", source)).toEqual({ fenceLine: "type:pgn", source });
+	});
+
 	it("puts the type on the fence line otherwise", () => {
 		expect(aliasBlock("chess", "title:x", "1.e4 e5 *")).toEqual({ fenceLine: "type:pgn title:x", source: "1.e4 e5 *" });
 		expect(aliasBlock("chess", "src:Games/a.pgn", "")).toEqual({ fenceLine: "type:pgn src:Games/a.pgn", source: "" });
