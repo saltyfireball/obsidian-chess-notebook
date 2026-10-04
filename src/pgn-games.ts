@@ -27,19 +27,34 @@ function resultAt(text: string, i: number): string | null {
 }
 
 // A game ends at its result, or where a new tag block starts after move text.
-// Tags, comments and variations never end a game.
+// Tags, comments and variations never end a game. Text with neither tags nor
+// moves (a comment between games) is not a game: it stays with the game before
+// it, and before the first game it is dropped.
 export function splitPgnGames(text: string): string[] {
 	const games: string[] = [];
 	let start = 0;
+	let lastStart = 0;
 	let hasMoves = false;
+	let hasTags = false;
 	let depth = 0;
 	let i = 0;
 
-	const cut = (end: number): void => {
-		const game = text.slice(start, end).trim();
-		if (game.length > 0) games.push(game);
+	const reset = (end: number): void => {
 		start = end;
 		hasMoves = false;
+		hasTags = false;
+	};
+
+	// Ends the current text at end: a new game, or more of the previous one.
+	const cut = (end: number): void => {
+		const game = text.slice(start, end).trim();
+		if (game.length > 0 && (hasMoves || hasTags || games.length === 0)) {
+			games.push(game);
+			lastStart = start;
+		} else if (game.length > 0) {
+			games[games.length - 1] = text.slice(lastStart, end).trim();
+		}
+		reset(end);
 	};
 
 	while (i < text.length) {
@@ -51,7 +66,6 @@ export function splitPgnGames(text: string): string[] {
 		if (ch === "{") {
 			const end = text.indexOf("}", i + 1);
 			i = end === -1 ? text.length : end + 1;
-			hasMoves = true;
 			continue;
 		}
 		if (ch === ";" || (ch === "%" && atLineStart(text, i))) {
@@ -61,6 +75,12 @@ export function splitPgnGames(text: string): string[] {
 		}
 		if (ch === "[" && depth === 0 && atLineStart(text, i)) {
 			if (hasMoves) cut(i);
+			else if (!hasTags) {
+				// Comments before this tag block: the previous game's, or a file note.
+				if (games.length > 0) cut(i);
+				else reset(i);
+			}
+			hasTags = true;
 			const end = text.indexOf("\n", i);
 			i = end === -1 ? text.length : end + 1;
 			continue;

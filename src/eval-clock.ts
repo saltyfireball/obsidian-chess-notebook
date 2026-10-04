@@ -26,18 +26,22 @@ export function parseClock(value: string): number | null {
 
 // 3:00, 1:02:03, and tenths under ten seconds: 0:09.8.
 export function formatClock(seconds: number): string {
-	const whole = Math.floor(seconds);
+	// In whole tenths, through hundredths first: 4.6 - 4 is 0.5999...
+	const allTenths = Math.floor(Math.round(seconds * 100) / 10);
+	const whole = Math.floor(allTenths / 10);
 	const h = Math.floor(whole / 3600);
 	const m = Math.floor((whole % 3600) / 60);
 	const s = whole % 60;
 	const ss = String(s).padStart(2, "0");
-	const tenths = seconds < 10 && seconds !== whole ? "." + Math.floor((seconds - whole) * 10) : "";
+	const tenths = whole < 10 && allTenths % 10 !== 0 ? "." + (allTenths % 10) : "";
 	return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}${tenths}`;
 }
 
 // "+0.4", "-1.2", "#3", "#-2".
 export function evalLabel(evaluation: Evaluation): string {
-	if (evaluation.kind === "mate") return evaluation.white ? `#${Math.abs(evaluation.moves)}` : `#-${Math.abs(evaluation.moves)}`;
+	if (evaluation.kind === "mate") {
+		return evaluation.white || evaluation.moves === 0 ? `#${Math.abs(evaluation.moves)}` : `#-${Math.abs(evaluation.moves)}`;
+	}
 	const pawns = Math.round(evaluation.pawns * 10) / 10;
 	return (pawns > 0 ? "+" : "") + pawns.toFixed(1);
 }
@@ -77,7 +81,14 @@ export function extractEvalClock(comment: string | null): {
 // The moves from the start up to the viewer's move id ("m-3v0-2": the main
 // line's moves before the variation, then the variation's first three).
 export function pathTo(mainline: MoveNode[], id: string): MoveNode[] {
+	return linePath(mainline, id).path;
+}
+
+// pathTo, plus where the innermost line starts in it: the moves before
+// lineStart belong to the lines the variation branched from.
+export function linePath(mainline: MoveNode[], id: string): { path: MoveNode[]; lineStart: number } {
 	const path: MoveNode[] = [];
+	let lineStart = 0;
 	let line = mainline;
 	let idx = -1;
 	for (const part of id.slice(1).match(/-\d+|v\d+/g) ?? []) {
@@ -92,30 +103,48 @@ export function pathTo(mainline: MoveNode[], id: string): MoveNode[] {
 		// A variation replaces its parent move, unless it continues after it.
 		const replaces = variation[0]?.color === parent.color;
 		path.push(...line.slice(0, replaces ? idx : idx + 1));
+		lineStart = path.length;
 		line = variation;
 		idx = -1;
 	}
 	path.push(...line.slice(0, idx + 1));
-	return path;
+	return { path, lineStart };
 }
 
-// The latest eval and each side's latest clock along a line.
-export function latestEvalClock(path: MoveNode[]): {
+// The latest eval and each side's latest clock along a line. The eval is
+// taken from path[lineStart] on only, so a variation does not show the eval of
+// the line it branched from. Stale: the eval is from a move before the last.
+export function latestEvalClock(
+	path: MoveNode[],
+	lineStart = 0,
+): {
 	evaluation: Evaluation | null;
+	stale: boolean;
 	white: number | null;
 	black: number | null;
 } {
 	let evaluation: Evaluation | null = null;
+	let stale = false;
 	let white: number | null = null;
 	let black: number | null = null;
-	for (const node of path) {
-		if (node.evaluation) evaluation = node.evaluation;
+	for (let i = 0; i < path.length; i++) {
+		const node = path[i];
+		if (i >= lineStart) {
+			if (node.evaluation) evaluation = moverMates(node.evaluation, node.color);
+			stale = evaluation !== null && !node.evaluation;
+		}
 		if (node.clock !== null) {
 			if (node.color === "w") white = node.clock;
 			else black = node.clock;
 		}
 	}
-	return { evaluation, white, black };
+	return { evaluation, stale, white, black };
+}
+
+// [%eval #0]: the side to move is mated, so the side that just moved mates.
+function moverMates(evaluation: Evaluation, color: "w" | "b"): Evaluation {
+	if (evaluation.kind !== "mate" || evaluation.moves !== 0) return evaluation;
+	return { kind: "mate", moves: 0, white: color === "w" };
 }
 
 // Whether any move in the game or its variations carries an eval / a clock.

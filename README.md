@@ -199,7 +199,7 @@ A PGN that holds several games, like an export from a game site, gets a game pic
 
 ### chess, pgn and fen blocks
 
-Notes written for other tools work without edits: `pgn`, `fen` and `chess` code blocks render too. A `pgn` block is a `chessboard type:pgn` block and a `fen` block is a `chessboard type:fen` block. A `chess` block holds either: text with `[Tags]` or move numbers is a PGN, anything else a FEN. All the options work on these blocks as well.
+Notes written for other tools can work without edits: `pgn`, `fen` and `chess` code blocks can render too. These are off by default; turn each one on under Code blocks in the plugin's settings (Render chess blocks, Render pgn blocks, Render fen blocks), then reload Obsidian. A `pgn` block is a `chessboard type:pgn` block and a `fen` block is a `chessboard type:fen` block. A `chess` block holds either: text with `[Tags]` or move numbers is a PGN, anything else a FEN. All the options work on these blocks as well.
 
 <img src="docs/media/pgn-block.png" width="420" alt="A pgn code block rendered as a board">
 
@@ -209,7 +209,7 @@ Notes written for other tools work without edits: `pgn`, `fen` and `chess` code 
 ```
 ````
 
-Each name can be turned off in the settings, for vaults where something else already renders it. Obsidian reads code block names when it loads, so reload it after changing one.
+Only one plugin can render a code block name: when another plugin also renders `pgn`, `fen` or `chess` blocks, whichever loads first keeps them and the other skips that name. Leave a name off when something else in your vault already renders it. Obsidian reads code block names when it loads, so reload it after changing one.
 
 ### Eight piece sets and figurine notation
 
@@ -247,12 +247,11 @@ Boards follow Obsidian's theme.
 
 ### Sound and screen readers
 
-Both are off by default and turned on in the settings.
+All three are off by default and turned on in the settings.
 
 - **Move sounds** play a short tone for each move and a lower one for captures, at the volume you set. The tones are made on the fly, with no audio files and no network.
 - **Announce moves** has screen readers read out each move as you step through a game, for example "12. Nf3, knight to f3" or "5... exd4, pawn takes d4", including castling, promotion, check and mate.
-
-Every board also labels its squares for screen readers with what stands on them, for example "e4, white knight" or "a3, empty".
+- **Square labels** has every board label its squares for screen readers with what stands on them, for example "e4, white knight" or "a3, empty".
 
 ### Settings
 
@@ -264,7 +263,8 @@ The settings tab has a How to use page, a quick reference for blocks, header tag
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 - **Move sounds** and **Sound volume**: a tone for each move and capture (off by default).
 - **Announce moves**: read each move out to screen readers (off by default).
-- **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all on by default). Reload Obsidian after changing one.
+- **Square labels**: label each square for screen readers with its piece (off by default).
+- **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all off by default). Reload Obsidian after changing one.
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
 <img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">

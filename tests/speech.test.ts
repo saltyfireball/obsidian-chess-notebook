@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { moveSpeech, squareLabel } from "../src/speech";
+import { boardAria, layerAria, moveSpeech, squareAria, squareLabel } from "../src/speech";
 import { soundFor } from "../src/sound";
+import { DEFAULT_SETTINGS } from "../src/types";
 
 describe("moveSpeech", () => {
 	it("names the piece and the square", () => {
@@ -59,5 +60,27 @@ describe("soundFor", () => {
 		expect(soundFor("Nxe5")).toBe("capture");
 		expect(soundFor("Nf3")).toBe("move");
 		expect(soundFor("O-O")).toBe("move");
+	});
+});
+
+describe("square label attributes", () => {
+	it("labels the board, hides the layers and labels each square when on", () => {
+		expect(boardAria(true)).toEqual({ role: "group", "aria-label": "Chessboard" });
+		expect(layerAria(true)).toEqual({ "aria-hidden": "true" });
+		expect(squareAria(true, "e4", "wn")).toEqual({ role: "img", "aria-label": "e4, white knight" });
+	});
+
+	it("puts the board back as the library drew it when off", () => {
+		expect(boardAria(false)).toEqual({ role: "img", "aria-label": null });
+		expect(layerAria(false)).toEqual({ "aria-hidden": null });
+		expect(squareAria(false, "e4", "wn")).toEqual({ role: null, "aria-label": null });
+	});
+});
+
+describe("default settings", () => {
+	it("keeps every sound and screen-reader feature off", () => {
+		expect(DEFAULT_SETTINGS.moveSounds).toBe(false);
+		expect(DEFAULT_SETTINGS.announceMoves).toBe(false);
+		expect(DEFAULT_SETTINGS.squareLabels).toBe(false);
 	});
 });

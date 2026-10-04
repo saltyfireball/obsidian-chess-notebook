@@ -1118,6 +1118,11 @@
     overflow: hidden;
 }
 
+/* While a puzzle or drill is being solved; keeps its place beside the board */
+.sfb-chess-eval-bar.is-hidden {
+    visibility: hidden;
+}
+
 .sfb-chess-eval-white {
     position: absolute;
     left: 0;
@@ -1147,6 +1152,11 @@
 
 .sfb-chess-eval-label.is-white {
     color: #403d39;
+}
+
+/* Carried over from an earlier move that had an eval */
+.sfb-chess-eval-label.is-stale {
+    opacity: 0.55;
 }
 
 .sfb-chess-eval-label.is-top {
