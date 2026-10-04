@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { staticFenPosition, staticPgnPosition } from "../src/static-position";
+import { staticBoardLabel, staticFenPosition, staticPgnPosition } from "../src/static-position";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
@@ -37,5 +37,16 @@ describe("staticFenPosition", () => {
 		expect(staticFenPosition(fens, 1)).toBe("b");
 		expect(staticFenPosition(fens, "end")).toBe("c");
 		expect(staticFenPosition(fens, 7)).toBe("c");
+	});
+});
+
+describe("staticBoardLabel", () => {
+	it("names the diagram by its title, with the side to move and the FEN", () => {
+		expect(staticBoardLabel("Opera Game", AFTER_E4)).toBe(`Opera Game, Black to move, FEN ${AFTER_E4}`);
+	});
+
+	it("falls back to Chess diagram without a title", () => {
+		expect(staticBoardLabel(null, START_FEN)).toBe(`Chess diagram, White to move, FEN ${START_FEN}`);
+		expect(staticBoardLabel("  ", START_FEN)).toBe(`Chess diagram, White to move, FEN ${START_FEN}`);
 	});
 });

@@ -4,6 +4,8 @@ import { ExploreLine } from "./explore";
 export interface ExploreHooks {
 	// The position a new line starts from: the one the viewer is showing.
 	baseFen(): string;
+	// A piece was picked up, before it is dropped.
+	onPickUp(): void;
 	// The first move of a line was played.
 	onEnter(): void;
 	// The board shows a new explore position.
@@ -41,7 +43,11 @@ export class BoardExplorer {
 	// a piece is picked up, so one call covers every later move.
 	enable(): void {
 		this.board.enablePuzzleInput(
-			(square) => this.current().hasOwnPiece(square),
+			(square) => {
+				const ok = this.current().hasOwnPiece(square);
+				if (ok) this.hooks.onPickUp();
+				return ok;
+			},
 			(from, to) => this.current().isLegal(from, to),
 			(from, to) => this.play(from, to),
 			// Free exploring shows no legal-move dots.

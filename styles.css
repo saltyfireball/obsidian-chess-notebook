@@ -46,8 +46,9 @@
 
 .sfb-board-blue {
     --sfb-square-light: #dee3e6;
-    --sfb-square-dark: #8ca2ad;
-    --sfb-coord-dark: #6f8794;
+    --sfb-square-dark: #7590a0;
+    --sfb-coord-dark: #577080;
+    --sfb-coord-light: #ffffff;
     --sfb-lastmove-light: #c3d887;
     --sfb-lastmove-dark: #92b166;
 }
@@ -62,8 +63,9 @@
 
 .sfb-board-grey {
     --sfb-square-light: #e6e6e6;
-    --sfb-square-dark: #a6a6a6;
-    --sfb-coord-dark: #858585;
+    --sfb-square-dark: #8c8c8c;
+    --sfb-coord-dark: #666666;
+    --sfb-coord-light: #ffffff;
     --sfb-lastmove-light: #d6d68c;
     --sfb-lastmove-dark: #b2b264;
 }
@@ -94,8 +96,10 @@
     font-weight: bold;
 }
 
+/* Labels on dark squares: a theme sets --sfb-coord-light when its light
+   square colour is too faint on its dark squares. */
 .cm-chessboard.sfb-chess .coordinates .coordinate.black {
-    fill: var(--sfb-square-light, #ebecd3);
+    fill: var(--sfb-coord-light, var(--sfb-square-light, #ebecd3));
 }
 
 .cm-chessboard.sfb-chess .coordinates .coordinate.white {
@@ -271,6 +275,7 @@
     }
 
     /* Printers drop background colours by default; keep the squares. */
+    .sfb-chess-static,
     .sfb-chess-static .cm-chessboard {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -720,6 +725,14 @@
     pointer-events: none;
 }
 
+/* The game's comment, eval and clocks describe the game's position, not the
+   explored one, so they step aside while exploring. */
+.sfb-chess-moves-paused .sfb-chess-comment-active,
+.sfb-chess-exploring .sfb-chess-eval-bar,
+.sfb-chess-exploring .sfb-chess-clock {
+    visibility: hidden;
+}
+
 .sfb-chess-explore-bar {
     display: flex;
     flex-wrap: wrap;
@@ -1066,11 +1079,27 @@
     font-weight: 600;
 }
 
-.sfb-chess-review-source {
+/* A real button that reads as a note link. */
+.sfb-chess-review-bar button.sfb-chess-review-source {
+    display: block;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    border: none;
     color: var(--text-muted);
+    font-size: inherit;
+    cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.sfb-chess-review-bar button.sfb-chess-review-source:hover {
+    background: none;
+    color: var(--text-accent);
+    text-decoration: underline;
 }
 
 .sfb-chess-review-actions {

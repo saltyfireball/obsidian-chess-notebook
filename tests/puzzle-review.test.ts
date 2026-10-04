@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findChessBlocks, reviewCount, shuffle } from "../src/puzzle-review";
+import { findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle } from "../src/puzzle-review";
 
 const NOTE = [
 	"# Tactics",
@@ -27,6 +27,7 @@ describe("findChessBlocks", () => {
 	it("finds each chessboard block with its fence options and line", () => {
 		expect(blocks).toHaveLength(3);
 		expect(blocks[0]).toEqual({
+			language: "chessboard",
 			fenceLine: 'type:pgn mode:puzzle title:"Fork"',
 			source: "1.e4 e5 2.Nf3 *",
 			line: 2,
@@ -49,6 +50,101 @@ describe("findChessBlocks", () => {
 
 	it("ignores a language that only starts with chessboard", () => {
 		expect(findChessBlocks("```chessboards\n1.e4 *\n```")).toEqual([]);
+	});
+});
+
+describe("findChessBlocks fences", () => {
+	const fence = (lines: string[]) => findChessBlocks(lines.join("\n"));
+
+	it("finds a fence indented up to three spaces and strips the indent from its lines", () => {
+		const blocks = fence(["   ```chessboard mode:puzzle", "   1.e4 e5 *", "   ```", "after"]);
+		expect(blocks).toEqual([{ language: "chessboard", fenceLine: "mode:puzzle", source: "1.e4 e5 *", line: 0 }]);
+	});
+
+	it("finds a fence in a list item", () => {
+		const blocks = fence(["- A tactic:", "  ```chessboard mode:puzzle", "  1.e4 e5 *", "  ```", "- next item"]);
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].source).toBe("1.e4 e5 *");
+		expect(fence(["1. ```chessboard mode:puzzle", "   1.d4 *", "   ```"])[0].source).toBe("1.d4 *");
+	});
+
+	it("finds a fence in a callout, nested callouts too", () => {
+		const blocks = fence(["> [!tip] Puzzle", "> ```chessboard mode:puzzle", "> 1.e4 e5 *", "> ```", "", "> > ~~~chessboard", "> > 1.d4 *", "> > ~~~"]);
+		expect(blocks.map((b) => [b.source, b.line])).toEqual([
+			["1.e4 e5 *", 1],
+			["1.d4 *", 5],
+		]);
+	});
+
+	it("ends an unclosed callout block where the callout ends", () => {
+		const blocks = fence(["> ```chessboard", "> 1.e4 *", "plain text", "```chessboard", "1.d4 *", "```"]);
+		expect(blocks.map((b) => b.source)).toEqual(["1.e4 *", "1.d4 *"]);
+	});
+
+	it("skips an example chessboard fence inside a longer fence", () => {
+		const blocks = fence(["````md", "```chessboard type:pgn mode:puzzle", "1.e4 e5 *", "```", "````", "```chessboard mode:puzzle", "1.d4 *", "```"]);
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].source).toBe("1.d4 *");
+		expect(blocks[0].line).toBe(5);
+	});
+
+	it("skips an example chessboard fence inside a tilde fence", () => {
+		expect(fence(["~~~", "```chessboard mode:puzzle", "1.e4 *", "```", "~~~"])).toEqual([]);
+	});
+
+	it("needs the language to be exactly chessboard", () => {
+		expect(fence(["```chessboard-x mode:puzzle", "1.e4 *", "```"])).toEqual([]);
+		expect(fence(["```chessboard.foo", "1.e4 *", "```"])).toEqual([]);
+		expect(fence(["``` chessboard mode:puzzle", "1.e4 *", "```"])).toHaveLength(1);
+		expect(fence(["```Chessboard", "1.e4 *", "```"])).toHaveLength(1);
+	});
+
+	it("is not a backtick fence when the info string holds a backtick", () => {
+		expect(fence(["```chessboard `x`", "1.e4 *", "```"])).toEqual([]);
+	});
+
+	it("finds the alias languages it is given", () => {
+		const text = ["```pgn mode:puzzle", "1.e4 *", "```", "```chess", "1.d4 *", "```", "```fen", "8/8/8/8/8/8/8/8 w - - 0 1", "```"].join("\n");
+		expect(findChessBlocks(text)).toEqual([]);
+		const blocks = findChessBlocks(text, ["chessboard", "pgn", "chess"]);
+		expect(blocks.map((b) => [b.language, b.fenceLine, b.source])).toEqual([
+			["pgn", "mode:puzzle", "1.e4 *"],
+			["chess", "", "1.d4 *"],
+		]);
+	});
+});
+
+describe("isPlayablePgn", () => {
+	it("takes a PGN with moves", () => {
+		expect(isPlayablePgn("1.e4 e5 2.Nf3 *")).toBe(true);
+		expect(isPlayablePgn('[FEN "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"]\n\n1.Ra8# *')).toBe(true);
+	});
+
+	it("drops a malformed or empty PGN", () => {
+		expect(isPlayablePgn("garbage")).toBe(false);
+		expect(isPlayablePgn("")).toBe(false);
+		expect(isPlayablePgn('[Event "x"]')).toBe(false);
+	});
+});
+
+describe("mapInBatches", () => {
+	it("keeps order and reports progress per batch", async () => {
+		const progress: number[] = [];
+		const out = await mapInBatches([1, 2, 3, 4, 5], 2, async (n) => n * 10, (done) => progress.push(done));
+		expect(out).toEqual([10, 20, 30, 40, 50]);
+		expect(progress).toEqual([2, 4, 5]);
+	});
+
+	it("runs at most size at a time", async () => {
+		let running = 0;
+		let peak = 0;
+		await mapInBatches([1, 2, 3, 4, 5, 6, 7], 3, async () => {
+			running++;
+			peak = Math.max(peak, running);
+			await new Promise((r) => setTimeout(r, 1));
+			running--;
+		});
+		expect(peak).toBe(3);
 	});
 });
 

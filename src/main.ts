@@ -1,23 +1,25 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
 import { boardBlockFor, editsCodeBlock } from "./paste-board";
-import { findChessBlocks } from "./puzzle-review";
+import { findChessBlocks, isPlayablePgn, mapInBatches } from "./puzzle-review";
 import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
 import { PgnViewer } from "./pgn-viewer";
 import { StaticViewer } from "./static-viewer";
 import { staticFenPosition, staticPgnPosition } from "./static-position";
+import { parseShapeOptions } from "./pgn-parser";
 import { GamePickerViewer } from "./game-picker";
 import { splitPgnGames } from "./pgn-games";
 import { ChessSettingTab } from "./settings";
 import { injectSprites, removeSprites } from "./board-manager";
 import { resolvePieceSet } from "./fan-pieces";
-import { parseBoardTheme, resolveBoardTheme } from "./board-themes";
+import { resolveBoardTheme } from "./board-themes";
+import { parseOptions } from "./block-options";
 import { closeSounds } from "./sound";
-import { parseBoardSize, resolveBoardSize } from "./board-size";
+import { resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
-import { BLOCK_ALIASES, aliasBlock, looksLikeFen, srcOption } from "./chess-format";
+import { BLOCK_ALIASES, aliasBlock, looksLikeFen } from "./chess-format";
 import type { BlockAlias } from "./chess-format";
 
 // The setting that turns each alias on.
@@ -66,6 +68,9 @@ export default class ChessPlugin extends Plugin {
 	private fileCache = new Map<string, { mtime: number; content: string }>();
 	private fileBoundBlocks = new Map<string, FileBoundBlock[]>();
 	private blockChildren = new Map<HTMLElement, ChessBlockChild>();
+	// The code block languages rendered since load: chessboard plus the aliases turned on.
+	private blockLanguages: string[] = ["chessboard"];
+	private scanning = false;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -111,7 +116,10 @@ export default class ChessPlugin extends Plugin {
 		this.registerBlockProcessor("chessboard", null);
 		// Obsidian reads processors at load, so a changed alias setting needs a reload.
 		for (const alias of BLOCK_ALIASES) {
-			if (this.settings[ALIAS_SETTING[alias]]) this.registerBlockProcessor(alias, alias);
+			if (this.settings[ALIAS_SETTING[alias]]) {
+				this.registerBlockProcessor(alias, alias);
+				this.blockLanguages.push(alias);
+			}
 		}
 	}
 
@@ -291,7 +299,7 @@ export default class ChessPlugin extends Plugin {
 		}
 		const fens = this.parseFens(content);
 		const fen = fens.length > 0 ? staticFenPosition(fens, options.startAt) : normalizeFen(content.trim());
-		return new StaticViewer(el, fen, { arrows: [], squares: [] }, options, this.settings);
+		return new StaticViewer(el, fen, parseShapeOptions(options.arrows, options.squares), options, this.settings);
 	}
 
 	private parseFens(content: string): string[] {
@@ -383,7 +391,15 @@ export default class ChessPlugin extends Plugin {
 
 	// Gathers every mode:puzzle block in the vault and serves them in a modal.
 	private async reviewVaultPuzzles(): Promise<void> {
-		const puzzles = await this.collectPuzzles();
+		// A second run while the first still scans would only scan twice.
+		if (this.scanning) return;
+		this.scanning = true;
+		let puzzles: ReviewPuzzle[];
+		try {
+			puzzles = await this.collectPuzzles();
+		} finally {
+			this.scanning = false;
+		}
 		if (puzzles.length === 0) {
 			new Notice("No mode:puzzle chessboard blocks found in the vault.");
 			return;
@@ -396,156 +412,51 @@ export default class ChessPlugin extends Plugin {
 		}).open();
 	}
 
-	// Reads each note and keeps the PGN blocks whose options (parsed the same
-	// way a rendered block's are) say mode:puzzle. A src: block reads its file.
+	// Reads the notes a few at a time, with a progress notice, and keeps the
+	// PGN blocks whose options (parsed the same way a rendered block's are) say
+	// mode:puzzle and whose PGN has moves. A src: block reads its file.
 	private async collectPuzzles(): Promise<ReviewPuzzle[]> {
-		const puzzles: ReviewPuzzle[] = [];
-		for (const file of this.app.vault.getMarkdownFiles()) {
-			const text = await this.app.vault.cachedRead(file);
-			if (!text.toLowerCase().includes("chessboard")) continue;
-			for (const block of findChessBlocks(text)) {
-				const parsed = this.parseCodeBlock(block.source, block.fenceLine);
-				if (!parsed || parsed.type !== "pgn" || parsed.options.mode !== "puzzle") continue;
-				let pgn = parsed.content;
-				if (parsed.options.src) {
-					try {
-						pgn = await this.readChessFile(this.resolveSrcPath(parsed.options.src, file.path));
-					} catch {
-						continue;
+		const files = this.app.vault.getMarkdownFiles();
+		const languages = this.blockLanguages;
+		const mentions = new RegExp(languages.join("|"), "i");
+		const notice = new Notice(`Scanning ${files.length} notes for puzzles...`, 0);
+		try {
+			const perFile = await mapInBatches(
+				files,
+				20,
+				async (file): Promise<ReviewPuzzle[]> => {
+					const text = await this.app.vault.cachedRead(file);
+					if (!mentions.test(text)) return [];
+					const found: ReviewPuzzle[] = [];
+					for (const block of findChessBlocks(text, languages)) {
+						const alias = block.language === "chessboard" ? null : (block.language as BlockAlias);
+						// Read it the way the renderer does, so the scan matches what renders.
+						const read = alias ? aliasBlock(alias, block.fenceLine, block.source) : block;
+						const parsed = this.parseCodeBlock(read.source, read.fenceLine);
+						if (!parsed || parsed.type !== "pgn" || parsed.options.mode !== "puzzle") continue;
+						let pgn = parsed.content;
+						if (parsed.options.src) {
+							try {
+								pgn = await this.readChessFile(this.resolveSrcPath(parsed.options.src, file.path));
+							} catch {
+								continue;
+							}
+						}
+						if (!isPlayablePgn(pgn)) continue;
+						found.push({ path: file.path, line: block.line, pgn, options: parsed.options });
 					}
-				}
-				puzzles.push({ path: file.path, line: block.line, pgn, options: parsed.options });
-			}
+					return found;
+				},
+				(done) => notice.setMessage(`Scanning notes for puzzles... ${done} of ${files.length}`),
+			);
+			return perFile.flat();
+		} finally {
+			notice.hide();
 		}
-		return puzzles;
-	}
-
-	private parseOptions(line: string): CodeBlockOptions {
-		const opts: CodeBlockOptions = {
-			center: true,
-			mode: "normal",
-			startAt: "start",
-			flipped: false,
-			diagram: false,
-			color: null,
-			notation: "san",
-			pieces: null,
-			arrows: null,
-			squares: null,
-			board: null,
-			size: null,
-			title: null,
-			white: null,
-			black: null,
-			event: null,
-			site: null,
-			date: null,
-			round: null,
-			eco: null,
-			result: null,
-			src: null,
-			game: null,
-		};
-
-		opts.src = srcOption(line);
-
-		const gameMatch = /game:(?:"([^"]+)"|(\d+))/i.exec(line);
-		if (gameMatch) {
-			opts.game = gameMatch[1] ?? parseInt(gameMatch[2]);
-		}
-
-		const boolMatch = /center:(true|false)/i.exec(line);
-		if (boolMatch && boolMatch[1].toLowerCase() === "false") {
-			opts.center = false;
-		}
-
-		if (/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i.test(line)) {
-			opts.diagram = true;
-		}
-
-		const flippedMatch = /flipped:(true|false)/i.exec(line);
-		if (flippedMatch && flippedMatch[1].toLowerCase() === "true") {
-			opts.flipped = true;
-		}
-
-		const modeMatch = /mode:(normal|puzzle|step|drill)/i.exec(line);
-		if (modeMatch) {
-			const modeVal = modeMatch[1].toLowerCase();
-			if (modeVal === "puzzle" || modeVal === "step" || modeVal === "drill") {
-				opts.mode = modeVal;
-			}
-		}
-
-		const colorMatch = /color:(white|black)/i.exec(line);
-		if (colorMatch) {
-			opts.color = colorMatch[1].toLowerCase() === "black" ? "b" : "w";
-		}
-
-		const notationMatch = /notation:(san|fan)/i.exec(line);
-		if (notationMatch && notationMatch[1].toLowerCase() === "fan") {
-			opts.notation = "fan";
-		}
-
-		const piecesMatch = /pieces:([\w-]+)/i.exec(line);
-		if (piecesMatch) {
-			opts.pieces = piecesMatch[1].toLowerCase();
-		}
-
-		const arrowsMatch = /(?:^|\s)arrows:(?:"([^"]*)"|(\S+))/i.exec(line);
-		if (arrowsMatch) {
-			opts.arrows = arrowsMatch[1] ?? arrowsMatch[2];
-		}
-
-		const squaresMatch = /(?:^|\s)squares:(?:"([^"]*)"|(\S+))/i.exec(line);
-		if (squaresMatch) {
-			opts.squares = squaresMatch[1] ?? squaresMatch[2];
-		}
-
-		const boardMatch = /(?:^|\s)board:([\w-]+)/i.exec(line);
-		if (boardMatch) {
-			opts.board = parseBoardTheme(boardMatch[1]);
-		}
-
-		const sizeMatch = /\bsize:(\w+)/i.exec(line);
-		if (sizeMatch) {
-			opts.size = parseBoardSize(sizeMatch[1]);
-		}
-
-		const startAtMatch = /start_at:(\w+)/i.exec(line);
-		if (startAtMatch) {
-			const val = startAtMatch[1].toLowerCase();
-			if (val === "end") {
-				opts.startAt = "end";
-			} else if (val !== "start") {
-				const num = parseInt(val);
-				if (!isNaN(num) && num >= 0) {
-					opts.startAt = num;
-				}
-			}
-		}
-
-		const quotedPattern = /(\w+):"([^"]*)"/g;
-		let match: RegExpExecArray | null = quotedPattern.exec(line);
-		while (match !== null) {
-			const key = match[1].toLowerCase();
-			const value = match[2];
-			if (key === "title") opts.title = value;
-			else if (key === "white") opts.white = value;
-			else if (key === "black") opts.black = value;
-			else if (key === "event") opts.event = value;
-			else if (key === "site") opts.site = value;
-			else if (key === "date") opts.date = value;
-			else if (key === "round") opts.round = value;
-			else if (key === "eco") opts.eco = value;
-			else if (key === "result") opts.result = value;
-			match = quotedPattern.exec(line);
-		}
-
-		return opts;
 	}
 
 	private parseCodeBlock(source: string, fenceLine: string): ParsedCodeBlock | null {
-		const fenceOpts = this.parseOptions(fenceLine);
+		const fenceOpts = parseOptions(fenceLine);
 		const fenceLower = fenceLine.toLowerCase();
 
 		const lines = source.split("\n");
@@ -556,7 +467,7 @@ export default class ChessPlugin extends Plugin {
 		// title keeps its case.
 		if (fenceLower.includes("type:fen") || firstLine.includes("type:fen")) {
 			const contentLines = firstLine.includes("type:fen") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:fen") ? this.parseOptions(header) : null;
+			const firstLineOpts = firstLine.includes("type:fen") ? parseOptions(header) : null;
 			return {
 				type: "fen",
 				content: contentLines.join("\n"),
@@ -566,7 +477,7 @@ export default class ChessPlugin extends Plugin {
 
 		if (fenceLower.includes("type:pgn") || firstLine.includes("type:pgn")) {
 			const contentLines = firstLine.includes("type:pgn") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:pgn") ? this.parseOptions(header) : null;
+			const firstLineOpts = firstLine.includes("type:pgn") ? parseOptions(header) : null;
 			return {
 				type: "pgn",
 				content: contentLines.join("\n"),
@@ -602,6 +513,7 @@ export default class ChessPlugin extends Plugin {
 			startAt: inline.startAt !== "start" ? inline.startAt : fence.startAt,
 			flipped: inline.flipped || fence.flipped,
 			diagram: inline.diagram || fence.diagram,
+			explore: inline.explore && fence.explore,
 			color: inline.color ?? fence.color,
 			notation: inline.notation !== "san" ? inline.notation : fence.notation,
 			pieces: inline.pieces ?? fence.pieces,
