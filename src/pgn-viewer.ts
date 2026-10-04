@@ -12,7 +12,8 @@ import { legalTargets } from "./legal-moves";
 import { EvalClockView } from "./eval-clock-view";
 import type { Evaluation } from "./eval-clock";
 import { BoardExplorer } from "./board-explorer";
-import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
+import { drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
+import { RunGeneration } from "./run-generation";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
 import { moveSpeech, START_SPEECH } from "./speech";
 import { playMoveSound, soundFor } from "./sound";
@@ -56,7 +57,7 @@ export class PgnViewer {
 	private puzzleHighWater = -1;
 	// Each start, reset or exit of puzzle mode begins a new run, so a paused
 	// reply from an older run cannot move the board.
-	private puzzleRuns = new DrillRuns();
+	private puzzleRuns = new RunGeneration();
 	private puzzleTally = new PuzzleTally();
 	private puzzleReport: HTMLElement | null = null;
 	private puzzleBtn: HTMLElement | null = null;
@@ -76,7 +77,7 @@ export class PgnViewer {
 	private drillPath: MoveNode[] = [];
 	private drillStatus: HTMLElement | null = null;
 	private drillBranches: string[] = [];
-	private drillRuns = new DrillRuns();
+	private drillRuns = new RunGeneration();
 	// The reader's own line from the current position, in normal mode.
 	private explorer: BoardExplorer | null = null;
 	// False with explore:false: dragging a piece in normal mode does nothing.

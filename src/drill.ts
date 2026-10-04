@@ -54,22 +54,3 @@ export function pickChoice(choices: DrillChoice[], random: () => number): DrillC
 	if (choices.length === 0) return null;
 	return choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))];
 }
-
-// Counts drill (or puzzle) runs so a callback timed in one run does nothing
-// once another has started (Restart, Reset) or the mode is left.
-export class DrillRuns {
-	private current = 0;
-
-	next(): void {
-		this.current++;
-	}
-
-	// fn, bound to the run it was made in: calling it later in another run is
-	// a no-op.
-	guard(fn: () => void): () => void {
-		const run = this.current;
-		return () => {
-			if (run === this.current) fn();
-		};
-	}
-}

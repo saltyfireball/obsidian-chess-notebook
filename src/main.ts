@@ -1,6 +1,6 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
 import { boardBlockFor, editsCodeBlock } from "./paste-board";
-import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches } from "./puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, SourceOccurrences } from "./puzzle-review";
 import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
@@ -68,6 +68,9 @@ export default class ChessPlugin extends Plugin {
 	private fileCache = new Map<string, { mtime: number; content: string }>();
 	private fileBoundBlocks = new Map<string, FileBoundBlock[]>();
 	private blockChildren = new Map<HTMLElement, ChessBlockChild>();
+	// Which block a render without section info (PDF export) is, among the
+	// note's blocks with the same source.
+	private sectionlessRenders = new SourceOccurrences();
 	// The code block languages rendered since load: chessboard plus the aliases turned on.
 	private blockLanguages: string[] = ["chessboard"];
 	private scanning = false;
@@ -134,10 +137,21 @@ export default class ChessPlugin extends Plugin {
 				void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
 			};
 			const fenceLine = this.extractFenceLine(el, ctx, language);
-			if (fenceLine !== null) render(fenceLine);
+			if (fenceLine !== null) {
+				render(fenceLine);
+				return;
+			}
 			// Export to PDF renders without section info: find the block's
 			// options in the note instead, or every option would be lost.
-			else void this.fenceLineFromNote(ctx.sourcePath, language, source).then(render);
+			// Counted now, in render order, so blocks with the same source
+			// each get their own options.
+			const occurrence = this.sectionlessRenders.next(ctx.sourcePath, language, source, Date.now());
+			void this.fenceLineFromNote(ctx.sourcePath, language, source, occurrence).then((line) => {
+				// The block may have been unloaded or rendered again while the
+				// note was read.
+				if (child.gone || this.blockChildren.get(el) !== child) return;
+				render(line);
+			});
 		};
 		try {
 			this.registerMarkdownCodeBlockProcessor(language, handler);
@@ -225,11 +239,11 @@ export default class ChessPlugin extends Plugin {
 		}
 	}
 
-	private async fenceLineFromNote(path: string, language: string, source: string): Promise<string> {
+	private async fenceLineFromNote(path: string, language: string, source: string, occurrence: number): Promise<string> {
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!(file instanceof TFile)) return "";
 		try {
-			return fenceLineFor(await this.app.vault.cachedRead(file), language, source);
+			return fenceLineFor(await this.app.vault.cachedRead(file), language, source, occurrence);
 		} catch {
 			return "";
 		}
@@ -248,6 +262,11 @@ export default class ChessPlugin extends Plugin {
 				el.createDiv({ cls: "sfb-chess-error", text: "Invalid chessboard block. Use type:fen or type:pgn." });
 				return;
 			}
+
+			// Checked before src: binds the block to its file, so an unloaded
+			// block would leave a binding nothing removes.
+			const child = this.blockChildren.get(el);
+			if (!child || child.gone) return;
 
 			let content = parsed.content;
 			const src = parsed.options.src;
@@ -269,8 +288,8 @@ export default class ChessPlugin extends Plugin {
 				}
 			}
 
-			const child = this.blockChildren.get(el);
-			if (!child || child.gone) return;
+			// The block may have been unloaded or rendered again while the file was read.
+			if (child.gone || this.blockChildren.get(el) !== child) return;
 			this.clearBlock(el);
 
 			if (parsed.options.center) {
