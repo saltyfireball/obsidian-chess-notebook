@@ -7,6 +7,7 @@ import type { CodeBlockOptions } from "./types";
 
 // Every option is matched outside quoted values, so a title, src: path or
 // other quoted text cannot switch on board:, arrows:, diagram: and the rest.
+// A true/false option may have spaces after its colon (interactive: false).
 export function parseOptions(line: string): CodeBlockOptions {
 	const opts: CodeBlockOptions = {
 		center: true,
@@ -43,20 +44,20 @@ export function parseOptions(line: string): CodeBlockOptions {
 		opts.game = gameMatch[1] ?? parseInt(gameMatch[2]);
 	}
 
-	const boolMatch = find(/center:(true|false)/i);
+	const boolMatch = find(/center:\s*(true|false)/i);
 	if (boolMatch && boolMatch[1].toLowerCase() === "false") {
 		opts.center = false;
 	}
 
-	if (find(/(?:^|\s)explore:false(?:\s|$)/i)) {
+	if (find(/(?:^|\s)explore:\s*false(?:\s|$)/i)) {
 		opts.explore = false;
 	}
 
-	if (find(/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i)) {
+	if (find(/(?:^|\s)(?:interactive:\s*false|diagram:\s*true)(?:\s|$)/i)) {
 		opts.diagram = true;
 	}
 
-	const flippedMatch = find(/flipped:(true|false)/i);
+	const flippedMatch = find(/flipped:\s*(true|false)/i);
 	if (flippedMatch && flippedMatch[1].toLowerCase() === "true") {
 		opts.flipped = true;
 	}

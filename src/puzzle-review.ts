@@ -20,25 +20,18 @@ const FENCE = /^(`{3,}|~{3,})(.*)$/;
 // A thematic break: three or more -, * or _, spaces allowed between.
 const BREAK = /^([-*_])(?: *\1){2,} *$/;
 // A line that starts a block of its own, so it cannot be a lazy line of a
-// paragraph in a list item: a fence, list marker, quote or heading.
+// paragraph: a fence, list marker, quote or heading.
 const BLOCK_START = /^(?:`{3,}|~{3,}|[-*+](?: |$)|\d{1,9}[.)](?: |$)|>|#{1,6}(?: |$))/;
 
-// Strips up to max callout markers ("> ") from a line.
-function stripQuotes(line: string, max: number): { depth: number; rest: string } {
-	let depth = 0;
-	let rest = line;
-	while (depth < max) {
-		const m = /^ {0,3}> ?/.exec(rest);
-		if (!m) break;
-		rest = rest.slice(m[0].length);
-		depth++;
-	}
-	return { depth, rest };
-}
+// An open container a line has to continue: a callout ("> ") or a list item,
+// whose content sits width columns in from where the item starts.
+type Container = { quote: true } | { quote: false; width: number };
 
-// A line with the tabs in its indentation expanded to four-column tab stops.
+// A line with the tabs in its structure (the indentation, callout markers and
+// list markers it starts with) expanded to four-column tab stops, so a column
+// is a character.
 function expandIndent(line: string): string {
-	const lead = /^[ \t]*/.exec(line)?.[0] ?? "";
+	const lead = /^[ \t>*+\-\d.)]*/.exec(line)?.[0] ?? "";
 	if (!lead.includes("\t")) return line;
 	let out = "";
 	for (const ch of lead) out += ch === "\t" ? " ".repeat(4 - (out.length % 4)) : ch;
@@ -50,66 +43,96 @@ function indentOf(line: string): number {
 	return /^ */.exec(line)?.[0].length ?? 0;
 }
 
+// How far into line its open containers reach, in order: a callout needs its
+// marker (up to three spaces in), a list item its content indentation or a
+// blank line. matched counts the containers the line continues.
+function continueContainers(line: string, stack: readonly Container[]): { matched: number; pos: number } {
+	let pos = 0;
+	let matched = 0;
+	for (const c of stack) {
+		const rest = line.slice(pos);
+		if (c.quote) {
+			const m = /^ {0,3}> ?/.exec(rest);
+			if (!m) break;
+			pos += m[0].length;
+		} else if (rest.trim() !== "") {
+			if (indentOf(rest) < c.width) break;
+			pos += c.width;
+		} else {
+			pos += Math.min(rest.length, c.width);
+		}
+		matched++;
+	}
+	return { matched, pos };
+}
+
 // Every code block in languages (lower-case, default chessboard) in a note,
 // in order, read the way CommonMark reads fences: a fence sits at most three
 // spaces in from its container (the note, a list item's content or a
-// callout), so one indented four or more is indented code; it closes on a
-// fence of the same character at least as long, as indented, in the same
-// container; and the text inside any other fence (an example in a ```md or
-// ```` block) is not a block. An unclosed block runs to the end of the note,
-// or to the end of its callout or list item, as Obsidian renders it, and the
-// line that ends the container is read again.
+// callout, nested in any order), so one indented four or more is indented
+// code; it closes on a fence of the same character at least as long, as
+// indented, in the same container; and the text inside any other fence (an
+// example in a ```md or ```` block) is not a block. An unclosed block runs to
+// the end of the note, or to the end of its callout or list item, as
+// Obsidian renders it, and the line that ends the container is read again.
 export function findChessBlocks(text: string, languages: readonly string[] = ["chessboard"]): ChessBlock[] {
-	const lines = text.split(/\r?\n/);
+	const lines = text.split(/\r?\n/).map(expandIndent);
 	const blocks: ChessBlock[] = [];
-	// The content columns of the open list items, innermost last, in the
-	// callout depth they were opened at.
-	let items: number[] = [];
-	let itemsDepth = 0;
-	// Whether the last line was paragraph text, which a less indented line may
-	// continue lazily without ending its list item.
+	// The open callouts and list items, outermost first.
+	let stack: Container[] = [];
+	// Whether the last line was paragraph text, which a line that does not
+	// continue every container may continue lazily without ending them.
 	let paragraph = false;
 	let i = 0;
 	while (i < lines.length) {
-		const quoted = stripQuotes(lines[i], Infinity);
-		const depth = quoted.depth;
-		const rest = expandIndent(quoted.rest);
+		const raw = lines[i];
 		i++;
-		if (depth !== itemsDepth) {
-			items = [];
-			itemsDepth = depth;
-			paragraph = false;
+		const { matched, pos } = continueContainers(raw, stack);
+		let line = raw.slice(pos);
+		if (matched < stack.length) {
+			const start = line.trimStart();
+			const lazy = paragraph && start !== "" && (indentOf(line) > 3 || (!BLOCK_START.test(start) && !BREAK.test(start)));
+			if (lazy) continue;
+			stack = stack.slice(0, matched);
 		}
-		if (rest.trim() === "") {
-			paragraph = false;
-			continue;
-		}
-		let col = indentOf(rest);
-		let line = rest.slice(col);
-		const lazy = paragraph && items.length > 0 && col < items[items.length - 1];
-		if (lazy && !BLOCK_START.test(line) && !BREAK.test(line)) continue;
-		while (items.length && col < items[items.length - 1]) items.pop();
-		let base = items.length ? items[items.length - 1] : 0;
-		if (col - base <= 3 && BREAK.test(line)) {
-			paragraph = false;
-			continue;
-		}
-		// Each list marker opens an item whose content starts after it.
-		for (let m = LIST_MARKER.exec(line); m && col - base <= 3; m = LIST_MARKER.exec(line)) {
+		// Each callout marker or list marker opens a container inside the last.
+		for (;;) {
+			const col = indentOf(line);
+			const after = line.slice(col);
+			if (col > 3 || BREAK.test(after)) break;
+			if (after.startsWith(">")) {
+				stack.push({ quote: true });
+				line = after.slice(after.startsWith("> ") ? 2 : 1);
+				paragraph = false;
+				continue;
+			}
+			const m = LIST_MARKER.exec(after);
+			if (!m) break;
 			const spaces = m[2].length;
-			base = col + m[1].length + (spaces === 0 || spaces > 4 ? 1 : spaces);
-			items.push(base);
-			col += m[0].length;
-			line = line.slice(m[0].length);
+			// Five or more spaces after the marker: the content starts after one
+			// and the rest indent it.
+			const gap = spaces === 0 ? 0 : spaces > 4 ? 1 : spaces;
+			stack.push({ quote: false, width: col + m[1].length + (gap || 1) });
+			line = after.slice(m[1].length + gap);
+			paragraph = false;
 		}
-		const open = col - base <= 3 ? FENCE.exec(line) : null;
+		if (line.trim() === "") {
+			paragraph = false;
+			continue;
+		}
+		const indent = indentOf(line);
+		line = line.slice(indent);
+		if (indent <= 3 && BREAK.test(line)) {
+			paragraph = false;
+			continue;
+		}
+		const open = indent <= 3 ? FENCE.exec(line) : null;
 		// A backtick fence's info string may not hold a backtick.
 		if (!open || (open[1][0] === "`" && open[2].includes("`"))) {
-			if (line !== "") paragraph = col - base <= 3 ? !/^#{1,6}(?: |$)/.test(line) : paragraph;
+			if (indent <= 3) paragraph = !/^#{1,6}(?: |$)/.test(line);
 			continue;
 		}
 		paragraph = false;
-		const indent = col - base;
 		const fence = open[1];
 		const info = open[2].trim();
 		const language = info.split(/\s/)[0].toLowerCase();
@@ -118,14 +141,10 @@ export function findChessBlocks(text: string, languages: readonly string[] = ["c
 		let closed = false;
 		let end = i;
 		for (; end < lines.length; end++) {
-			const inner = stripQuotes(lines[end], depth);
-			// The block ends with its callout.
-			if (inner.depth < depth) break;
-			const content = expandIndent(inner.rest);
-			const lead = indentOf(content);
-			// The block ends with its list item: a line less indented than the item's content.
-			if (lead < base && content.trim() !== "") break;
-			const own = content.slice(Math.min(lead, base));
+			const inner = continueContainers(lines[end], stack);
+			// The block ends with its callout or list item.
+			if (inner.matched < stack.length) break;
+			const own = lines[end].slice(inner.pos);
 			if (close.test(own)) {
 				closed = true;
 				break;

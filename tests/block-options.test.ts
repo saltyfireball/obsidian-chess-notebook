@@ -19,6 +19,21 @@ describe("parseOptions", () => {
 		expect(opts.size).toBeNull();
 	});
 
+	it("reads interactive:false and diagram:true with spaces after the colon", () => {
+		expect(parseOptions("interactive: false").diagram).toBe(true);
+		expect(parseOptions("type:pgn interactive:   false title:x").diagram).toBe(true);
+		expect(parseOptions("diagram: true").diagram).toBe(true);
+		expect(parseOptions("interactive:false").diagram).toBe(true);
+		expect(parseOptions("interactive: true").diagram).toBe(false);
+		expect(parseOptions('title:"a interactive: false b"').diagram).toBe(false);
+	});
+
+	it("reads the other true/false options with spaces after the colon", () => {
+		expect(parseOptions("explore: false").explore).toBe(false);
+		expect(parseOptions("flipped: true").flipped).toBe(true);
+		expect(parseOptions("center: false").center).toBe(false);
+	});
+
 	it("does not read arrows, squares, diagram or interactive inside quotes", () => {
 		const opts = parseOptions('title:"see arrows:e2e4 squares:f7" event:"Study diagram:true x" white:"a interactive:false b"');
 		expect(opts.arrows).toBeNull();
