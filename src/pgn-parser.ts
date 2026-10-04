@@ -32,6 +32,8 @@ export interface ParsedPgn {
 	startingFen: string;
 	startingComment: string | null;
 	startingShapes: BoardShapes;
+	// An [%eval] in the comment before the first move: the start position's.
+	startingEvaluation: Evaluation | null;
 	moves: MoveNode[];
 	result: string | null;
 }
@@ -507,7 +509,8 @@ export function parsePgn(pgn: string): ParsedPgn {
 	const pos = { idx: 0 };
 	const { moves, startingComment: rawStartingComment } = parseMoveSequence(tokens, pos, chess);
 	applyShapes(moves);
-	const { text: startingComment, shapes: startingShapes } = extractShapes(extractEvalClock(rawStartingComment).text);
+	const starting = extractEvalClock(rawStartingComment);
+	const { text: startingComment, shapes: startingShapes } = extractShapes(starting.text);
 
 	let result: string | null = null;
 	for (const token of tokens) {
@@ -521,6 +524,7 @@ export function parsePgn(pgn: string): ParsedPgn {
 		startingFen,
 		startingComment,
 		startingShapes,
+		startingEvaluation: starting.evaluation,
 		moves,
 		result,
 	};
