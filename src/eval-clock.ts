@@ -86,6 +86,12 @@ export function pathTo(mainline: MoveNode[], id: string): MoveNode[] {
 
 // pathTo, plus where the innermost line starts in it: the moves before
 // lineStart belong to the lines the variation branched from.
+// True for the start (null) and main-line move ids ("m-3"); variation ids
+// carry a "v" ("m-0v0-1").
+export function onMainline(id: string | null): boolean {
+	return id === null || !id.includes("v");
+}
+
 export function linePath(mainline: MoveNode[], id: string): { path: MoveNode[]; lineStart: number } {
 	const path: MoveNode[] = [];
 	let lineStart = 0;
