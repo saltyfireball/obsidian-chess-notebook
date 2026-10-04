@@ -38,6 +38,19 @@ function expandIndent(line: string): string {
 	return out + line.slice(lead.length);
 }
 
+// What is left of raw once its first cols columns (counted with tabs
+// expanded, as expandIndent does) are gone: the text exactly as written, but
+// for the spaces left of a tab only partly used.
+function afterColumns(raw: string, cols: number): string {
+	let col = 0;
+	let k = 0;
+	while (k < raw.length && col < cols) {
+		col = raw[k] === "\t" ? col + 4 - (col % 4) : col + 1;
+		k++;
+	}
+	return " ".repeat(col - cols) + raw.slice(k);
+}
+
 // The number of spaces a line starts with.
 function indentOf(line: string): number {
 	return /^ */.exec(line)?.[0].length ?? 0;
@@ -76,7 +89,9 @@ function continueContainers(line: string, stack: readonly Container[]): { matche
 // the end of the note, or to the end of its callout or list item, as
 // Obsidian renders it, and the line that ends the container is read again.
 export function findChessBlocks(text: string, languages: readonly string[] = ["chessboard"]): ChessBlock[] {
-	const lines = text.split(/\r?\n/).map(expandIndent);
+	const raws = text.split(/\r?\n/);
+	// Structure is read with tabs expanded; a block's body keeps its own.
+	const lines = raws.map(expandIndent);
 	const blocks: ChessBlock[] = [];
 	// The open callouts and list items, outermost first.
 	let stack: Container[] = [];
@@ -150,7 +165,8 @@ export function findChessBlocks(text: string, languages: readonly string[] = ["c
 				break;
 			}
 			// Content loses up to the opening fence's indentation.
-			body.push(own.replace(new RegExp("^ {0," + indent + "}"), ""));
+			const lost = Math.min(indentOf(own), indent);
+			body.push(afterColumns(raws[end], inner.pos + lost));
 		}
 		if (languages.includes(language)) {
 			blocks.push({ language, fenceLine: info.slice(language.length).trim(), source: body.join("\n"), line: i - 1 });
