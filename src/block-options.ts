@@ -14,6 +14,7 @@ export function parseOptions(line: string): CodeBlockOptions {
 		startAt: "start",
 		flipped: false,
 		diagram: false,
+		explore: true,
 		color: null,
 		notation: "san",
 		pieces: null,
@@ -45,6 +46,10 @@ export function parseOptions(line: string): CodeBlockOptions {
 	const boolMatch = find(/center:(true|false)/i);
 	if (boolMatch && boolMatch[1].toLowerCase() === "false") {
 		opts.center = false;
+	}
+
+	if (find(/(?:^|\s)explore:false(?:\s|$)/i)) {
+		opts.explore = false;
 	}
 
 	if (find(/(?:^|\s)(?:interactive:false|diagram:true)(?:\s|$)/i)) {

@@ -14,6 +14,7 @@ const VOLUME = { min: 0, max: 100, step: 5 };
 const SOUNDS_DESC = "Play a short tone for each move and a different one for captures.";
 const VOLUME_DESC = "Loudness of the move sounds.";
 const ANNOUNCE_DESC = "Have screen readers read out each move as you step through a game.";
+const LABELS_DESC = 'Label each square for screen readers with what stands on it, e.g. "e4, white knight".';
 const ALIASES_DESC = "Off by default. When another plugin already renders blocks with that name, the one that loads first keeps them. Takes effect after reloading Obsidian.";
 
 // The code block names rendered besides chessboard, and what each renders as.
@@ -156,6 +157,12 @@ export class ChessSettingTab extends PluginSettingTab {
 						aliases: ["screen reader", "accessibility", "speak", "aria"],
 						control: { type: "toggle", key: "announceMoves", defaultValue: DEFAULT_SETTINGS.announceMoves },
 					},
+					{
+						name: "Square labels",
+						desc: LABELS_DESC,
+						aliases: ["screen reader", "accessibility", "aria", "squares"],
+						control: { type: "toggle", key: "squareLabels", defaultValue: DEFAULT_SETTINGS.squareLabels },
+					},
 				],
 			},
 			{
@@ -286,6 +293,16 @@ export class ChessSettingTab extends PluginSettingTab {
 				})
 			);
 
+		new Setting(containerEl)
+			.setName("Square labels")
+			.setDesc(LABELS_DESC)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.squareLabels).onChange(async (value) => {
+					this.plugin.settings.squareLabels = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
 		new Setting(containerEl).setName("Code blocks").setHeading();
 
 		for (const t of ALIAS_TOGGLES) {
@@ -368,7 +385,8 @@ function renderReference(containerEl: HTMLElement): void {
 		["center:true|false", "Center the board horizontally (default: true)"],
 		["mode:normal|puzzle|step|drill", "Start in specified mode"],
 		["color:white|black", "Side you play in drill mode"],
-		["interactive:false", "Static diagram: one position, no controls or move list, for printing and PDF export (also diagram:true)"],
+		["interactive:false", "Static diagram: one position, no controls or move list, for printing and PDF export (also diagram:true); mode: and color: are ignored"],
+		["explore:false", "Do not let a drag start a line of your own; the board stays as written"],
 		["flipped:true", "Flip board to Black's perspective; puzzle quizzes Black moves"],
 		["notation:san|fan", "SAN (text) or FAN (figurine piece icons) notation"],
 		["pieces:name", "Override piece set for board and FAN (e.g. pieces:fantasy)"],
@@ -420,7 +438,7 @@ function renderReference(containerEl: HTMLElement): void {
 	const a11yRows: [string, string][] = [
 		["Move sounds", "A short tone for each move, a lower one for captures (off by default, volume in settings)"],
 		["Announce moves", 'Screen readers read each move as you step, e.g. "12. Nf3, knight to f3" (off by default)'],
-		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (always on)'],
+		["Square labels", 'Each square is labelled for screen readers, e.g. "e4, white knight" (off by default)'],
 	];
 	for (const [feature, desc] of a11yRows) {
 		const tr = a11yTbody.createEl("tr");

@@ -24,15 +24,17 @@ export class FenViewer {
 			options.board,
 		);
 		this.boardManager.showShapes(parseShapeOptions(options.arrows, options.squares));
-		this.enableExplore(fen);
+		if (options.explore) this.enableExplore(fen);
 	}
 
 	// Dragging a legal move starts a line from the diagram; Back to game (or
-	// Escape) puts the diagram back. A FEN chess.js refuses stays static.
+	// Escape) puts the diagram back. A FEN chess.js refuses stays static, and
+	// so does a block with explore:false.
 	private enableExplore(fen: string): void {
 		if (!ExploreLine.canStart(fen)) return;
 		this.explorer = new BoardExplorer(this.boardManager, this.wrapper, {
 			baseFen: () => fen,
+			onPickUp: () => {},
 			onEnter: () => {},
 			onPosition: () => {},
 			onExit: () => {

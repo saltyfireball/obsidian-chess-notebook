@@ -10,6 +10,7 @@ export interface ChessSettings {
 	moveSounds: boolean;
 	soundVolume: number;
 	announceMoves: boolean;
+	squareLabels: boolean;
 	// Also render chess, pgn and fen code blocks. Off by default; read once at load.
 	chessBlocks: boolean;
 	pgnBlocks: boolean;
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: ChessSettings = {
 	moveSounds: false,
 	soundVolume: 50,
 	announceMoves: false,
+	squareLabels: false,
 	chessBlocks: false,
 	pgnBlocks: false,
 	fenBlocks: false,
@@ -49,6 +51,8 @@ export interface CodeBlockOptions {
 	flipped: boolean;
 	// interactive:false or diagram:true: one position, no controls or move list.
 	diagram: boolean;
+	// explore:false: dragging a piece does not start a line of your own.
+	explore: boolean;
 	// The side you play in drill mode; null: White, or Black when flipped.
 	color: "w" | "b" | null;
 	notation: Notation;

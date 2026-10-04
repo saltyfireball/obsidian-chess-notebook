@@ -43,6 +43,12 @@ describe("parseOptions", () => {
 		expect(opts.flipped).toBe(false);
 	});
 
+	it("reads explore:false, but not inside quotes", () => {
+		expect(parseOptions("type:fen").explore).toBe(true);
+		expect(parseOptions("type:fen explore:false").explore).toBe(false);
+		expect(parseOptions('type:fen title:"explore:false"').explore).toBe(true);
+	});
+
 	it("still reads options after a quoted value", () => {
 		const opts = parseOptions('title:"my board:blue" board:wood diagram:true game:"Opera"');
 		expect(opts.board).toBe("wood");

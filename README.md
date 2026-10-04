@@ -103,11 +103,15 @@ r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4
 
 ### Trying your own moves
 
-On a game or a single FEN position, drag any legal move to try a line of your own from the position on the board. An "Exploring: 12...Nf6 13.d4" bar appears under the board, the game's moves wait until you are done, and Back to game (or Escape) puts the game back where you left it. The Left arrow takes back your last move. Nothing is written to the note. This works in normal mode; puzzle, step and drill mode keep the board to themselves.
+On a game or a single FEN position, drag any legal move to try a line of your own from the position on the board. An "Exploring: 12...Nf6 13.d4" bar appears under the board, the game's moves wait until you are done, and Back to game (or Escape) puts the game back where you left it. The Left arrow takes back your last move. Nothing is written to the note. This works in normal mode; puzzle, step and drill mode keep the board to themselves. While you explore, the game's comment, eval bar and clocks are hidden, since they describe the game's position, not yours. A pawn that reaches the last rank always becomes a queen.
+
+To keep a board from being dragged, add `explore:false`: a FEN diagram then stays as written and takes no focus, and a game keeps its controls but ignores drags in normal mode. `interactive:false` turns it off too, along with the controls.
 
 ### Static diagrams for printing
 
-`interactive:false` (or `diagram:true`) draws a plain board with no controls and no move list, so a PDF export or printout looks like a book diagram. A PGN shows the position at `start_at`, with any `[%cal]`/`[%csl]` drawings on that move; a FEN sequence shows its `start_at` line. `flipped:true` and `pieces:` still apply, and `title:"..."` becomes a caption under the board.
+`interactive:false` (or `diagram:true`) draws a plain board with no controls and no move list, so a PDF export or printout looks like a book diagram. A PGN shows the position at `start_at`, with any `[%cal]`/`[%csl]` drawings on that move; a FEN sequence shows its `start_at` line. `flipped:true`, `pieces:`, `board:`, `size:` and `center:` still apply, as do `arrows:` and `squares:` on a FEN block, and `title:"..."` becomes a caption under the board. Screen readers hear the title (or "Chess diagram"), the side to move and the FEN.
+
+A static diagram has no modes: `mode:` and `color:` are ignored, so `mode:puzzle interactive:false` is a plain board. It also leaves out the last-move highlight, NAGs, comments, the eval bar and clocks, and the header.
 
 <img src="docs/media/static-diagram.png" width="360" alt="A static diagram of the Opera Game's final position with a caption">
 
@@ -247,12 +251,11 @@ Boards follow Obsidian's theme.
 
 ### Sound and screen readers
 
-Both are off by default and turned on in the settings.
+All three are off by default and turned on in the settings.
 
 - **Move sounds** play a short tone for each move and a lower one for captures, at the volume you set. The tones are made on the fly, with no audio files and no network.
 - **Announce moves** has screen readers read out each move as you step through a game, for example "12. Nf3, knight to f3" or "5... exd4, pawn takes d4", including castling, promotion, check and mate.
-
-Every board also labels its squares for screen readers with what stands on them, for example "e4, white knight" or "a3, empty".
+- **Square labels** has every board label its squares for screen readers with what stands on them, for example "e4, white knight" or "a3, empty".
 
 ### Settings
 
@@ -264,6 +267,7 @@ The settings tab has a How to use page, a quick reference for blocks, header tag
 - **Piece set**: the default set for boards and figurine notation. Override it per block with `pieces:name`.
 - **Move sounds** and **Sound volume**: a tone for each move and capture (off by default).
 - **Announce moves**: read each move out to screen readers (off by default).
+- **Square labels**: label each square for screen readers with its piece (off by default).
 - **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all off by default). Reload Obsidian after changing one.
 
 <img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
@@ -282,7 +286,8 @@ Add options on the fence line. Quoted values use `key:"value"`.
 | `center:true\|false` | Center the board horizontally (default: true) |
 | `mode:normal\|puzzle\|step\|drill` | Start in the given mode |
 | `color:white\|black` | The side you play in drill mode (default: White, or Black with `flipped:true`) |
-| `interactive:false` | Static diagram: one position, no controls or move list (also `diagram:true`) |
+| `interactive:false` | Static diagram: one position, no controls or move list (also `diagram:true`); `mode:` and `color:` are ignored |
+| `explore:false` | Dragging a piece does not start a line of your own |
 | `flipped:true` | Show the board from Black's side; puzzle mode then quizzes Black's moves |
 | `notation:san\|fan` | Text moves (SAN) or figurine piece icons (FAN) |
 | `pieces:name` | Piece set for this block |
