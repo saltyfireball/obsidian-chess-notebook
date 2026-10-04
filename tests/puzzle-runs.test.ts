@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("obsidian", () => ({ Notice: class {} }));
 
-import { DrillRuns } from "../src/drill";
+import { RunGeneration } from "../src/run-generation";
 import { PgnViewer } from "../src/pgn-viewer";
 import { PuzzleTally } from "../src/puzzle-report";
 
@@ -15,7 +15,7 @@ function puzzleViewer() {
 		puzzleComplete: false,
 		puzzleHighWater: -1,
 		puzzleTally: new PuzzleTally(),
-		puzzleRuns: new DrillRuns(),
+		puzzleRuns: new RunGeneration(),
 		drillMode: false,
 		mainlineMoves: [{}, {}, {}, {}],
 		currentMoveId: null,

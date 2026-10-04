@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { DrillRuns, drillChoices, findChoice, pickChoice } from "../src/drill";
+import { describe, expect, it } from "vitest";
+import { drillChoices, findChoice, pickChoice } from "../src/drill";
 import { parsePgn } from "../src/pgn-parser";
 
 const ITALIAN = "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 (3...Nf6 4.Ng5 d5) (3...Be7) 4.c3 *";
@@ -90,36 +90,5 @@ describe("drillChoices continuation variations", () => {
 		const line = parsePgn("1.e4 e5 (2.d4 exd4) 2.Nf3 *").moves;
 		expect(drillChoices({ line, idx: 1 }).map((c) => c.node.san)).toEqual(["e5"]);
 		expect(drillChoices({ line, idx: 2 }).map((c) => c.node.san)).toEqual(["Nf3", "d4"]);
-	});
-});
-
-describe("DrillRuns", () => {
-	it("runs a guarded callback in the run it was made in", () => {
-		const runs = new DrillRuns();
-		const fn = vi.fn();
-		runs.next();
-		runs.guard(fn)();
-		expect(fn).toHaveBeenCalledTimes(1);
-	});
-
-	it("drops the wrong-move and reply timers once a new run has started", () => {
-		vi.useFakeTimers();
-		try {
-			const runs = new DrillRuns();
-			const wrongMove = vi.fn();
-			const reply = vi.fn();
-			runs.next();
-			setTimeout(runs.guard(wrongMove), 800);
-			setTimeout(runs.guard(reply), 500);
-			runs.next();
-			const fresh = vi.fn();
-			setTimeout(runs.guard(fresh), 500);
-			vi.advanceTimersByTime(1000);
-			expect(wrongMove).not.toHaveBeenCalled();
-			expect(reply).not.toHaveBeenCalled();
-			expect(fresh).toHaveBeenCalledTimes(1);
-		} finally {
-			vi.useRealTimers();
-		}
 	});
 });

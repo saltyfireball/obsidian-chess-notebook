@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle } from "../src/puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle, SourceOccurrences } from "../src/puzzle-review";
 
 const NOTE = [
 	"# Tactics",
@@ -233,5 +233,56 @@ describe("fenceLineFor", () => {
 
 	it("is empty when no block of that language has the source", () => {
 		expect(fenceLineFor(text, "chessboard", "1.e4 e5 *")).toBe("");
+	});
+
+	// Two blocks with the same PGN and different options (#122).
+	const twins = [
+		'```chessboard type:pgn interactive:false start_at:start title:"Start"',
+		"1.e4 e5 2.Nf3 *",
+		"```",
+		"",
+		'```chessboard type:pgn interactive:false start_at:end title:"End"',
+		"1.e4 e5 2.Nf3 *",
+		"```",
+	].join("\n");
+
+	it("gives each of two blocks with the same source its own options, by order", () => {
+		expect(fenceLineFor(twins, "chessboard", "1.e4 e5 2.Nf3 *", 0)).toBe('type:pgn interactive:false start_at:start title:"Start"');
+		expect(fenceLineFor(twins, "chessboard", "1.e4 e5 2.Nf3 *", 1)).toBe('type:pgn interactive:false start_at:end title:"End"');
+	});
+
+	it("wraps an occurrence past the last block around", () => {
+		expect(fenceLineFor(twins, "chessboard", "1.e4 e5 2.Nf3 *", 2)).toBe('type:pgn interactive:false start_at:start title:"Start"');
+	});
+
+	// #125: a tab inside the body is the renderer's source as written.
+	it("matches a body with a literal tab and keeps the tab in its source", () => {
+		const tabbed = ['```chessboard type:pgn interactive:false start_at:end title:"Tabbed"', "1.\te4 e5 *", "```"].join("\n");
+		expect(findChessBlocks(tabbed)[0].source).toBe("1.\te4 e5 *");
+		expect(fenceLineFor(tabbed, "chessboard", "1.\te4 e5 *\n")).toBe('type:pgn interactive:false start_at:end title:"Tabbed"');
+	});
+
+	it("keeps body tabs in a block inside a callout and a list item", () => {
+		const nested = ["> - ```chessboard", ">   1.\te4\te5 *", ">   ```"].join("\n");
+		expect(findChessBlocks(nested)[0].source).toBe("1.\te4\te5 *");
+	});
+});
+
+describe("SourceOccurrences", () => {
+	it("counts each source of a note in render order", () => {
+		const occ = new SourceOccurrences();
+		expect(occ.next("A.md", "chessboard", "1.e4 *", 0)).toBe(0);
+		expect(occ.next("A.md", "chessboard", "1.d4 *", 10)).toBe(0);
+		expect(occ.next("A.md", "chessboard", "1.e4 *\n", 20)).toBe(1);
+		expect(occ.next("B.md", "chessboard", "1.e4 *", 30)).toBe(0);
+		expect(occ.next("A.md", "pgn", "1.e4 *", 40)).toBe(0);
+	});
+
+	it("starts a note from zero after a quiet gap: a new export", () => {
+		const occ = new SourceOccurrences(2000);
+		occ.next("A.md", "chessboard", "1.e4 *", 0);
+		occ.next("A.md", "chessboard", "1.e4 *", 100);
+		expect(occ.next("A.md", "chessboard", "1.e4 *", 5000)).toBe(0);
+		expect(occ.next("A.md", "chessboard", "1.e4 *", 5100)).toBe(1);
 	});
 });

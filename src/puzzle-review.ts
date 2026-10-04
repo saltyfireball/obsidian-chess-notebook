@@ -38,6 +38,19 @@ function expandIndent(line: string): string {
 	return out + line.slice(lead.length);
 }
 
+// What is left of raw once its first cols columns (counted with tabs
+// expanded, as expandIndent does) are gone: the text exactly as written, but
+// for the spaces left of a tab only partly used.
+function afterColumns(raw: string, cols: number): string {
+	let col = 0;
+	let k = 0;
+	while (k < raw.length && col < cols) {
+		col = raw[k] === "\t" ? col + 4 - (col % 4) : col + 1;
+		k++;
+	}
+	return " ".repeat(col - cols) + raw.slice(k);
+}
+
 // The number of spaces a line starts with.
 function indentOf(line: string): number {
 	return /^ */.exec(line)?.[0].length ?? 0;
@@ -76,7 +89,9 @@ function continueContainers(line: string, stack: readonly Container[]): { matche
 // the end of the note, or to the end of its callout or list item, as
 // Obsidian renders it, and the line that ends the container is read again.
 export function findChessBlocks(text: string, languages: readonly string[] = ["chessboard"]): ChessBlock[] {
-	const lines = text.split(/\r?\n/).map(expandIndent);
+	const raws = text.split(/\r?\n/);
+	// Structure is read with tabs expanded; a block's body keeps its own.
+	const lines = raws.map(expandIndent);
 	const blocks: ChessBlock[] = [];
 	// The open callouts and list items, outermost first.
 	let stack: Container[] = [];
@@ -150,7 +165,8 @@ export function findChessBlocks(text: string, languages: readonly string[] = ["c
 				break;
 			}
 			// Content loses up to the opening fence's indentation.
-			body.push(own.replace(new RegExp("^ {0," + indent + "}"), ""));
+			const lost = Math.min(indentOf(own), indent);
+			body.push(afterColumns(raws[end], inner.pos + lost));
 		}
 		if (languages.includes(language)) {
 			blocks.push({ language, fenceLine: info.slice(language.length).trim(), source: body.join("\n"), line: i - 1 });
@@ -161,12 +177,42 @@ export function findChessBlocks(text: string, languages: readonly string[] = ["c
 	return blocks;
 }
 
-// The options of the first language block in text whose source is source,
-// or "" when none matches. For a render that has no section info (PDF export):
-// two blocks with the same source and different options get the first's.
-export function fenceLineFor(text: string, language: string, source: string): string {
+// The options of a language block in text whose source is source, or "" when
+// none matches. For a render that has no section info (PDF export): blocks
+// with the same source are told apart by order, occurrence 0 being the first.
+// An occurrence past the last wraps around.
+export function fenceLineFor(text: string, language: string, source: string, occurrence = 0): string {
 	const wanted = source.trim();
-	return findChessBlocks(text, [language]).find((b) => b.source.trim() === wanted)?.fenceLine ?? "";
+	const matches = findChessBlocks(text, [language]).filter((b) => b.source.trim() === wanted);
+	if (matches.length === 0) return "";
+	return matches[occurrence % matches.length].fenceLine;
+}
+
+// Counts, per note, how many times each block source has been rendered
+// without section info, so the nth render of a source gets the nth block that
+// has it. A note rendered again after gapMs of quiet starts from zero: a new
+// export pass.
+export class SourceOccurrences {
+	private notes = new Map<string, { last: number; counts: Map<string, number> }>();
+
+	constructor(private gapMs = 2000) {}
+
+	// The occurrence of this render: 0 for the first of the pass, then 1, ...
+	next(path: string, language: string, source: string, now: number): number {
+		for (const [p, note] of this.notes) {
+			if (now - note.last > this.gapMs) this.notes.delete(p);
+		}
+		let note = this.notes.get(path);
+		if (!note) {
+			note = { last: now, counts: new Map() };
+			this.notes.set(path, note);
+		}
+		note.last = now;
+		const key = language + "\n" + source.trim();
+		const occurrence = note.counts.get(key) ?? 0;
+		note.counts.set(key, occurrence + 1);
+		return occurrence;
+	}
 }
 
 // Whether a puzzle's PGN has moves to play: a malformed one is not a puzzle.
