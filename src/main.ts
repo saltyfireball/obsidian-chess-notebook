@@ -1,6 +1,6 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
 import { boardBlockFor, editsCodeBlock } from "./paste-board";
-import { findChessBlocks, isPlayablePgn, mapInBatches } from "./puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches } from "./puzzle-review";
 import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
@@ -19,7 +19,7 @@ import { closeSounds } from "./sound";
 import { resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
-import { BLOCK_ALIASES, aliasBlock, looksLikeFen } from "./chess-format";
+import { BLOCK_ALIASES, aliasBlock, blockType, looksLikeFen } from "./chess-format";
 import type { BlockAlias } from "./chess-format";
 
 // The setting that turns each alias on.
@@ -128,10 +128,16 @@ export default class ChessPlugin extends Plugin {
 			const child = new ChessBlockChild(el, (gone) => this.forgetBlock(gone));
 			this.blockChildren.set(el, child);
 			ctx.addChild(child);
+			const render = (fenceLine: string) => {
+				// An alias block is a chessboard block with its type: implied.
+				const block = alias ? aliasBlock(alias, fenceLine, source) : { fenceLine, source };
+				void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
+			};
 			const fenceLine = this.extractFenceLine(el, ctx, language);
-			// An alias block is a chessboard block with its type: implied.
-			const block = alias ? aliasBlock(alias, fenceLine, source) : { fenceLine, source };
-			void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
+			if (fenceLine !== null) render(fenceLine);
+			// Export to PDF renders without section info: find the block's
+			// options in the note instead, or every option would be lost.
+			else void this.fenceLineFromNote(ctx.sourcePath, language, source).then(render);
 		};
 		try {
 			this.registerMarkdownCodeBlockProcessor(language, handler);
@@ -202,16 +208,28 @@ export default class ChessPlugin extends Plugin {
 		}
 	}
 
-	private extractFenceLine(el: HTMLElement, ctx: MarkdownPostProcessorContext, language: string): string {
+	// The block's options from its section, or null when the render has no
+	// section info.
+	private extractFenceLine(el: HTMLElement, ctx: MarkdownPostProcessorContext, language: string): string | null {
 		try {
 			const info = ctx.getSectionInfo(el);
 			if (!info || !info.text) {
-				return "";
+				return null;
 			}
 			const lines = info.text.split("\n");
 			const fenceLineText = lines[info.lineStart] ?? "";
 			const match = new RegExp("^`{3,}\\s*" + language + "\\s*(.*)", "i").exec(fenceLineText);
 			return match ? match[1].trim() : "";
+		} catch {
+			return "";
+		}
+	}
+
+	private async fenceLineFromNote(path: string, language: string, source: string): Promise<string> {
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile)) return "";
+		try {
+			return fenceLineFor(await this.app.vault.cachedRead(file), language, source);
 		} catch {
 			return "";
 		}
@@ -457,31 +475,19 @@ export default class ChessPlugin extends Plugin {
 
 	private parseCodeBlock(source: string, fenceLine: string): ParsedCodeBlock | null {
 		const fenceOpts = parseOptions(fenceLine);
-		const fenceLower = fenceLine.toLowerCase();
 
 		const lines = source.split("\n");
 		const header = lines[0].trim();
-		const firstLine = header.toLowerCase();
 
+		// A type: inside a quoted value (a title, a src: path) does not count.
 		// Options are read from the header as written, so a src: path or a
 		// title keeps its case.
-		if (fenceLower.includes("type:fen") || firstLine.includes("type:fen")) {
-			const contentLines = firstLine.includes("type:fen") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:fen") ? parseOptions(header) : null;
+		const typed = blockType(fenceLine, header);
+		if (typed) {
 			return {
-				type: "fen",
-				content: contentLines.join("\n"),
-				options: this.mergeOptions(fenceOpts, firstLineOpts),
-			};
-		}
-
-		if (fenceLower.includes("type:pgn") || firstLine.includes("type:pgn")) {
-			const contentLines = firstLine.includes("type:pgn") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:pgn") ? parseOptions(header) : null;
-			return {
-				type: "pgn",
-				content: contentLines.join("\n"),
-				options: this.mergeOptions(fenceOpts, firstLineOpts),
+				type: typed.type,
+				content: (typed.inHeader ? lines.slice(1) : lines).join("\n"),
+				options: this.mergeOptions(fenceOpts, typed.inHeader ? parseOptions(header) : null),
 			};
 		}
 
