@@ -52,6 +52,9 @@ export class PgnViewer {
 	private hintComment: HTMLElement | null = null;
 	private boardColumn: HTMLElement | null = null;
 	private puzzleHighWater = -1;
+	// Each start, reset or exit of puzzle mode begins a new run, so a paused
+	// reply from an older run cannot move the board.
+	private puzzleRuns = new DrillRuns();
 	private puzzleTally = new PuzzleTally();
 	private puzzleReport: HTMLElement | null = null;
 	private puzzleBtn: HTMLElement | null = null;
@@ -687,6 +690,7 @@ export class PgnViewer {
 
 	private activatePuzzleMode(): void {
 		this.leaveExplore();
+		this.puzzleRuns.next();
 		this.puzzleMode = true;
 		this.puzzleComplete = false;
 		this.clearHint();
@@ -702,6 +706,7 @@ export class PgnViewer {
 	}
 
 	private deactivatePuzzleMode(): void {
+		this.puzzleRuns.next();
 		this.puzzleMode = false;
 		this.puzzleComplete = false;
 		this.clearHint();
@@ -738,6 +743,7 @@ export class PgnViewer {
 			return;
 		}
 		if (!this.puzzleMode) return;
+		this.puzzleRuns.next();
 		this.puzzleComplete = false;
 		this.puzzleHighWater = -1;
 		this.clearHint();
@@ -940,12 +946,12 @@ export class PgnViewer {
 		this.puzzleTally.recordWrong(nextIdx);
 		this.boardManager.flashWrong();
 		this.boardManager.disablePuzzleInput();
-		this.later(() => {
+		this.later(this.puzzleRuns.guard(() => {
 			this.resetBoardPosition();
 			if (this.puzzleMode && !this.puzzleComplete) {
 				this.enablePuzzleInput();
 			}
-		}, 600);
+		}), 600);
 	}
 
 	private resetBoardPosition(): void {
@@ -1003,10 +1009,12 @@ export class PgnViewer {
 		const nextOpponentIdx = idx + 1;
 		if (nextOpponentIdx < this.mainlineMoves.length) {
 			this.boardManager.disablePuzzleInput();
-			this.later(() => {
-				// The reader left puzzle mode (or reset it) during the pause:
-				// the board, and its input, are no longer this puzzle's.
-				if (!this.puzzleMode || this.getCurrentMainlineIndex() !== idx) return;
+			this.later(this.puzzleRuns.guard(() => {
+				// The reader reset or left the puzzle during the pause (the
+				// guard), or stepped off the move: the board, and its input,
+				// are no longer this reply's. A reset and a replay of the same
+				// move restore the index, so only the run tells them apart.
+				if (this.getCurrentMainlineIndex() !== idx) return;
 				if (nextOpponentIdx > this.puzzleHighWater) this.puzzleHighWater = nextOpponentIdx;
 				this.updateMoveVisibility();
 				const opponentId = "m-" + nextOpponentIdx;
@@ -1016,7 +1024,7 @@ export class PgnViewer {
 				} else {
 					this.showPuzzleComplete();
 				}
-			}, 500);
+			}), 500);
 		} else {
 			this.showPuzzleComplete();
 		}
