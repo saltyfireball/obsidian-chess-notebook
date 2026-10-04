@@ -100,6 +100,23 @@ describe("findChessBlocks fences", () => {
 		]);
 	});
 
+	it("finds a fence in a callout nested in a list item", () => {
+		const blocks = fence(["10. item", "    > ```chessboard type:pgn mode:puzzle", "    > 1.e4 *", "    > ```"]);
+		expect(blocks.map((b) => [b.fenceLine, b.source, b.line])).toEqual([["type:pgn mode:puzzle", "1.e4 *", 1]]);
+		expect(fence(["- item", "  > ```chessboard", "  > 1.d4 *", "  > ```"]).map((b) => b.source)).toEqual(["1.d4 *"]);
+		expect(fence(["> - item", ">   ```chessboard", ">   1.c4 *", ">   ```"]).map((b) => b.source)).toEqual(["1.c4 *"]);
+		// The block ends with the list item that holds its callout.
+		const ends = fence(["- > ```chessboard", "  > 1.e4 *", "> 1... e5", "```chessboard", "1.d4 *", "```"]);
+		expect(ends.map((b) => b.source)).toEqual(["1.e4 *", "1.d4 *"]);
+	});
+
+	it("reads a tab after a list marker at four-column tab stops", () => {
+		const blocks = fence(["-\t```chessboard type:pgn mode:puzzle", "\t1.e4 *", "\t```"]);
+		expect(blocks.map((b) => [b.fenceLine, b.source, b.line])).toEqual([["type:pgn mode:puzzle", "1.e4 *", 0]]);
+		expect(fence(["1.\t```chessboard", "    1.d4 *", "    ```"]).map((b) => b.source)).toEqual(["1.d4 *"]);
+		expect(fence([">\t```chessboard", ">\t1.c4 *", ">\t```"]).map((b) => b.source)).toEqual(["1.c4 *"]);
+	});
+
 	it("ends an unclosed callout block where the callout ends", () => {
 		const blocks = fence(["> ```chessboard", "> 1.e4 *", "plain text", "```chessboard", "1.d4 *", "```"]);
 		expect(blocks.map((b) => b.source)).toEqual(["1.e4 *", "1.d4 *"]);
