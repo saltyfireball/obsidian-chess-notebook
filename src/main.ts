@@ -265,7 +265,8 @@ export default class ChessPlugin extends Plugin {
 	// place; a block replaced or removed is no longer in the document.
 	private sectionlessOccurrence(el: HTMLElement, language: string): number {
 		const root = renderRoot(el);
-		const blocks = Array.from(root.querySelectorAll<HTMLElement>(`.block-language-${language}`)).filter(
+		// Escaped: an odd alias name would otherwise make the selector throw.
+		const blocks = Array.from(root.querySelectorAll<HTMLElement>(`.block-language-${CSS.escape(language)}`)).filter(
 			(block) => renderRoot(block) === root,
 		);
 		return occurrenceOf(blocks, el, (block) => this.sectionlessBlocks.get(block));
