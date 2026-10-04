@@ -74,6 +74,8 @@ export class PgnViewer {
 	private drillRuns = new DrillRuns();
 	// The reader's own line from the current position, in normal mode.
 	private explorer: BoardExplorer | null = null;
+	// False with explore:false: dragging a piece in normal mode does nothing.
+	private exploreAllowed = true;
 	private notation: Notation = "san";
 	private pieceSetName: string = STANDARD_PIECE_SET;
 	private pieceSetReady = false;
@@ -179,6 +181,7 @@ export class PgnViewer {
 		this.evalClock?.setFlipped(this.puzzleColor === "b");
 		this.updateActiveComment();
 
+		this.exploreAllowed = options.explore;
 		this.createExplorer(boardColumn);
 		if (this.initialMode === "drill") {
 			this.activateDrillMode();
@@ -1001,6 +1004,9 @@ export class PgnViewer {
 		if (nextOpponentIdx < this.mainlineMoves.length) {
 			this.boardManager.disablePuzzleInput();
 			this.later(() => {
+				// The reader left puzzle mode (or reset it) during the pause:
+				// the board, and its input, are no longer this puzzle's.
+				if (!this.puzzleMode || this.getCurrentMainlineIndex() !== idx) return;
 				if (nextOpponentIdx > this.puzzleHighWater) this.puzzleHighWater = nextOpponentIdx;
 				this.updateMoveVisibility();
 				const opponentId = "m-" + nextOpponentIdx;
@@ -1108,13 +1114,17 @@ export class PgnViewer {
 	private createExplorer(boardColumn: HTMLElement): void {
 		this.explorer = new BoardExplorer(this.boardManager, boardColumn, {
 			baseFen: () => this.getCurrentFen(),
+			// Auto-play would move the game under the held piece.
+			onPickUp: () => this.stopAutoPlay(),
 			onEnter: () => {
 				this.stopAutoPlay();
 				this.movesContainer.addClass("sfb-chess-moves-paused");
+				boardColumn.addClass("sfb-chess-exploring");
 			},
 			onPosition: (fen) => this.updateDrawBadge(fen, 1),
 			onExit: () => {
 				this.movesContainer.removeClass("sfb-chess-moves-paused");
+				boardColumn.removeClass("sfb-chess-exploring");
 				this.resetBoardPosition();
 			},
 		});
@@ -1122,7 +1132,7 @@ export class PgnViewer {
 
 	// Explore input is on only while no mode owns the board.
 	private enableExplore(): void {
-		if (this.puzzleMode || this.stepMode || this.drillMode) return;
+		if (!this.exploreAllowed || this.puzzleMode || this.stepMode || this.drillMode) return;
 		this.explorer?.enable();
 	}
 
