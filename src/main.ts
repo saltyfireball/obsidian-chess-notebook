@@ -19,7 +19,7 @@ import { closeSounds } from "./sound";
 import { resolveBoardSize } from "./board-size";
 import type { ChessSettings, ParsedCodeBlock, CodeBlockOptions } from "./types";
 import { DEFAULT_SETTINGS, normalizeFen } from "./types";
-import { BLOCK_ALIASES, aliasBlock, looksLikeFen } from "./chess-format";
+import { BLOCK_ALIASES, aliasBlock, blockType, looksLikeFen } from "./chess-format";
 import type { BlockAlias } from "./chess-format";
 
 // The setting that turns each alias on.
@@ -475,31 +475,19 @@ export default class ChessPlugin extends Plugin {
 
 	private parseCodeBlock(source: string, fenceLine: string): ParsedCodeBlock | null {
 		const fenceOpts = parseOptions(fenceLine);
-		const fenceLower = fenceLine.toLowerCase();
 
 		const lines = source.split("\n");
 		const header = lines[0].trim();
-		const firstLine = header.toLowerCase();
 
+		// A type: inside a quoted value (a title, a src: path) does not count.
 		// Options are read from the header as written, so a src: path or a
 		// title keeps its case.
-		if (fenceLower.includes("type:fen") || firstLine.includes("type:fen")) {
-			const contentLines = firstLine.includes("type:fen") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:fen") ? parseOptions(header) : null;
+		const typed = blockType(fenceLine, header);
+		if (typed) {
 			return {
-				type: "fen",
-				content: contentLines.join("\n"),
-				options: this.mergeOptions(fenceOpts, firstLineOpts),
-			};
-		}
-
-		if (fenceLower.includes("type:pgn") || firstLine.includes("type:pgn")) {
-			const contentLines = firstLine.includes("type:pgn") ? lines.slice(1) : lines;
-			const firstLineOpts = firstLine.includes("type:pgn") ? parseOptions(header) : null;
-			return {
-				type: "pgn",
-				content: contentLines.join("\n"),
-				options: this.mergeOptions(fenceOpts, firstLineOpts),
+				type: typed.type,
+				content: (typed.inHeader ? lines.slice(1) : lines).join("\n"),
+				options: this.mergeOptions(fenceOpts, typed.inHeader ? parseOptions(header) : null),
 			};
 		}
 

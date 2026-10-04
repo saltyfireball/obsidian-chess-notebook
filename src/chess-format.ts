@@ -45,7 +45,23 @@ export function srcOption(line: string): string | null {
 	return m ? m[1] ?? m[2] : null;
 }
 
-const TYPE_OPTION = /type:(fen|pgn)/i;
+// The type: option on a fence or header line, null without one. A type:
+// inside another option's quoted value (title:"type:fen trick") does not
+// count.
+export function typeOption(line: string): ChessFormat | null {
+	const m = execOutsideQuotes(/type:(fen|pgn)/i, line);
+	return m ? (m[1].toLowerCase() as ChessFormat) : null;
+}
+
+// A chessboard block's type: and whether it is on the block's header (its
+// first line, then read as options and left out of the content) or on the
+// fence line. The header's wins. Null when neither has one.
+export function blockType(fenceLine: string, header: string): { type: ChessFormat; inHeader: boolean } | null {
+	const headerType = typeOption(header);
+	if (headerType) return { type: headerType, inHeader: true };
+	const fenceType = typeOption(fenceLine);
+	return fenceType ? { type: fenceType, inHeader: false } : null;
+}
 
 // An alias block as a chessboard block: its fence line and text with the
 // type: made explicit. A type: on the block's first line wins over
@@ -55,8 +71,8 @@ const TYPE_OPTION = /type:(fen|pgn)/i;
 export function aliasBlock(alias: BlockAlias, fenceLine: string, source: string): { fenceLine: string; source: string } {
 	const lines = source.split("\n");
 	const first = lines[0] ?? "";
-	if (TYPE_OPTION.test(first)) return { fenceLine, source };
-	const fenceType = TYPE_OPTION.exec(fenceLine)?.[1].toLowerCase() as ChessFormat | undefined;
+	if (typeOption(first)) return { fenceLine, source };
+	const fenceType = typeOption(fenceLine);
 	const header = srcOption(first) !== null;
 	if (fenceType && !header) return { fenceLine, source };
 	const body = header ? lines.slice(1).join("\n") : source;
