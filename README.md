@@ -52,6 +52,22 @@ Paste a PGN and get a board with a header (players, event, site, date, ECO, resu
 
 A `[FEN "..."]` tag starts the game from that position instead of the opening position.
 
+### Arrows and squares in PGN comments
+
+A comment can draw on the board with `[%cal]` (arrows) and `[%csl]` (squares), the same commands game sites and study tools export. The drawings show while that move is on the board and go when you move on. Each entry is a colour letter (`G` green, `R` red, `Y` yellow, `B` blue) and the squares: `[%cal Ge2e4,Rd8d1]` draws a green arrow e2 to e4 and a red one d8 to d1, `[%csl Rf7,Ye5]` marks f7 red and e5 yellow. The commands are taken out of the comment text. A move whose comment holds nothing but drawings gets a small dot in the move list, so you can tell it has something to look at; hover it for the tooltip.
+
+````markdown
+```chessboard type:pgn
+1.e4 e5 2.Nf3 Nc6 3.Bc4 {[%csl Rf7][%cal Rc4f7]} Bc5 {Both sides develop.} *
+```
+````
+
+In puzzle and drill mode the drawings stay hidden while you solve, since a study often draws the answer on the move before it. They come back when the puzzle is solved or the drill line ends.
+
+### Check and draws
+
+A king in check has a red glow on its square. When the position on the board is a draw, a "1/2" badge by the board names the reason: stalemate, insufficient material, the 75-move rule or fivefold repetition, which end the game on their own, and threefold repetition or the fifty-move rule, shown as "1/2 claimable: threefold repetition" because a player has to claim those.
+
 ### Eval bar and clocks
 
 Games exported from game sites carry `[%eval 0.35]` / `[%eval #3]` and `[%clk 0:03:00]` in their comments. These are taken out of the comment text: an eval bar beside the board shows the evaluation after each move (mate scores fill the bar for the side that mates), and each side's clock shows above and below the board as you step through. Both are hidden when the PGN has none. Nothing is computed: only what the PGN already contains is shown.
@@ -125,7 +141,7 @@ A static diagram has no modes: `mode:` and `color:` are ignored, so `mode:puzzle
 
 Puzzle mode hides the moves. Play the next move on the board; picking up a piece puts a dot on each square it can move to (a ring on a piece it can take). A right move is played and the reply is made for you, a wrong one is undone. Each press of Hint shows a little more: the comment on the move to find (when it has one), then the piece to move, then the move as an arrow. With `flipped:true` the board is shown from Black's side and you play Black's moves.
 
-![Solving the finish of the Opera Game with the help of a hint](docs/media/puzzle.gif)
+![Solving the finish of the Opera Game with a wrong try, a hint and the report at the end](docs/media/puzzle.gif)
 
 ````markdown
 ```chessboard type:pgn mode:puzzle title:"Find Morphy's finish"
@@ -139,6 +155,8 @@ Puzzle mode hides the moves. Play the next move on the board; picking up a piece
 ````
 
 You can also switch any board into puzzle mode with the puzzle button under it.
+
+While a puzzle is unsolved, the moves you have not found, the eval bar and any `[%cal]`/`[%csl]` drawings stay hidden, so nothing gives the answer away. When the last move is found, a report under the controls shows the moves played and the mistakes made, with a button for each missed move that takes the board to it. Reset starts the puzzle again with a clean count.
 
 ### Reviewing every puzzle in the vault
 
@@ -270,7 +288,7 @@ The settings tab has a How to use page, a quick reference for blocks, header tag
 - **Square labels**: label each square for screen readers with its piece (off by default).
 - **Render chess / pgn / fen blocks**: which of the extra code block names render as boards (all off by default). Reload Obsidian after changing one.
 
-<img src="docs/media/settings.png" width="420" alt="The settings tab with its How to use page, auto-play speed and piece set">
+<img src="docs/media/settings.png" width="420" alt="The settings tab with its Board, Playback, Board and pieces, Sound and accessibility and Code blocks groups">
 <img src="docs/media/settings-how-to-use.png" width="420" alt="The How to use page with example blocks, the header tags table and the options">
 
 ## Options
@@ -308,7 +326,7 @@ Header tags White, Black, Result, Event, Site, Date, Round and ECO show in the h
 
 ## Controls
 
-Under the board: puzzle mode, step mode, hint, reset, flip, auto-play, first/previous/next/last move, copy FEN (the position on the board) and copy PGN. FEN sequences have copy FEN too.
+Under the board: puzzle mode, step mode, hint, reset, flip, auto-play, first/previous/next/last move, copy FEN (the position on the board) and copy PGN. FEN sequences have copy FEN too. The command palette also has **Paste a chess position or game as a board** and **Review puzzles from the vault**.
 
 ## Installation
 

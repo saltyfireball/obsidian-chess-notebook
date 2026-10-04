@@ -3,7 +3,7 @@
 	"name": "Chess Notebook",
 	"version": "1.0.4",
 	"minAppVersion": "1.1.0",
-	"description": "Interactive chessboards from FEN and PGN code blocks, with puzzle and step modes.",
+	"description": "Interactive chessboards from FEN and PGN code blocks: games, puzzles, drills, diagrams, eval bar and more.",
 	"author": "saltyfireball",
 	"isDesktopOnly": false
 }
