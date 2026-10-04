@@ -6,6 +6,7 @@ import {
 	hasEvalClock,
 	latestEvalClock,
 	linePath,
+	onMainline,
 	parseClock,
 	parseEval,
 	pathTo,
@@ -90,6 +91,13 @@ describe("parsePgn with eval and clock", () => {
 		expect(moves[2].evaluation).toBeNull();
 		expect(moves[2].variations[0][1].shapes.squares).toEqual([{ square: "e5", color: "G" }]);
 		expect(moves[2].variations[0][1].comment).toBeNull();
+	});
+
+	it("tells main-line ids from variation ids", () => {
+		expect(onMainline(null)).toBe(true);
+		expect(onMainline("m-3")).toBe(true);
+		expect(onMainline("m-0v0-0")).toBe(false);
+		expect(onMainline("m-4v1-2v0-0")).toBe(false);
 	});
 
 	it("keeps an eval written before the first move for the start position", () => {
