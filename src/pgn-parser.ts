@@ -32,6 +32,8 @@ export interface ParsedPgn {
 	startingFen: string;
 	startingComment: string | null;
 	startingShapes: BoardShapes;
+	// An [%eval] in the comment before the first move: the start position's.
+	startingEvaluation: Evaluation | null;
 	moves: MoveNode[];
 	result: string | null;
 }
@@ -433,7 +435,9 @@ function parseOptionEntry(entry: string, regex: RegExp): { color: ShapeColor; sq
 	if (extra !== undefined) return null;
 	const m = regex.exec(body);
 	if (!m) return null;
-	const suffix = colorName === undefined ? undefined : COLOR_NAMES[colorName.toLowerCase()];
+	// Own keys only: f7:constructor is not a colour.
+	const key = colorName?.toLowerCase();
+	const suffix = key !== undefined && Object.prototype.hasOwnProperty.call(COLOR_NAMES, key) ? COLOR_NAMES[key] : undefined;
 	if (colorName !== undefined && (!suffix || m[1])) return null;
 	const color = suffix ?? (m[1] ? (m[1].toUpperCase() as ShapeColor) : "G");
 	return { color, squares: m.slice(2).map((s) => s.toLowerCase()) };
@@ -441,19 +445,38 @@ function parseOptionEntry(entry: string, regex: RegExp): { color: ShapeColor; sq
 
 // The drawings from a FEN block's arrows:"e2e4,Rd8d1" and squares:"d5,Rf7"
 // options, in the same shape as a comment's [%cal]/[%csl]. Entries are split
-// on commas or spaces; ones that do not parse are skipped.
+// on commas or spaces, and stray quotes (an unclosed arrows:"e2e4,g1f3) are
+// dropped. Repeats are drawn once. Entries that do not parse are skipped,
+// with a console warning that names them.
 export function parseShapeOptions(arrows: string | null, squares: string | null): BoardShapes {
 	const shapes: BoardShapes = { arrows: [], squares: [] };
-	const entries = (value: string | null) => (value ?? "").split(/[\s,]+/).filter((e) => e.length > 0);
+	const skipped: string[] = [];
+	const seen = new Set<string>();
+	const entries = (value: string | null) => (value ?? "").replace(/"/g, "").split(/[\s,]+/).filter((e) => e.length > 0);
 	for (const entry of entries(arrows)) {
 		const parsed = parseOptionEntry(entry, OPTION_ARROW_REGEX);
-		if (parsed && parsed.squares[0] !== parsed.squares[1]) {
-			shapes.arrows.push({ from: parsed.squares[0], to: parsed.squares[1], color: parsed.color });
+		if (!parsed || parsed.squares[0] === parsed.squares[1]) {
+			skipped.push(entry);
+			continue;
 		}
+		const id = `a:${parsed.squares[0]}${parsed.squares[1]}`;
+		if (seen.has(id)) continue;
+		seen.add(id);
+		shapes.arrows.push({ from: parsed.squares[0], to: parsed.squares[1], color: parsed.color });
 	}
 	for (const entry of entries(squares)) {
 		const parsed = parseOptionEntry(entry, OPTION_SQUARE_REGEX);
-		if (parsed) shapes.squares.push({ square: parsed.squares[0], color: parsed.color });
+		if (!parsed) {
+			skipped.push(entry);
+			continue;
+		}
+		const id = `s:${parsed.squares[0]}`;
+		if (seen.has(id)) continue;
+		seen.add(id);
+		shapes.squares.push({ square: parsed.squares[0], color: parsed.color });
+	}
+	if (skipped.length > 0) {
+		console.warn(`chess-notebook: skipped arrows:/squares: entries that do not parse: ${skipped.join(", ")}`);
 	}
 	return shapes;
 }
@@ -486,7 +509,8 @@ export function parsePgn(pgn: string): ParsedPgn {
 	const pos = { idx: 0 };
 	const { moves, startingComment: rawStartingComment } = parseMoveSequence(tokens, pos, chess);
 	applyShapes(moves);
-	const { text: startingComment, shapes: startingShapes } = extractShapes(extractEvalClock(rawStartingComment).text);
+	const starting = extractEvalClock(rawStartingComment);
+	const { text: startingComment, shapes: startingShapes } = extractShapes(starting.text);
 
 	let result: string | null = null;
 	for (const token of tokens) {
@@ -500,6 +524,7 @@ export function parsePgn(pgn: string): ParsedPgn {
 		startingFen,
 		startingComment,
 		startingShapes,
+		startingEvaluation: starting.evaluation,
 		moves,
 		result,
 	};

@@ -10,6 +10,7 @@ import { moveLabel, PuzzleTally, renderPuzzleReport } from "./puzzle-report";
 import { HintProgress } from "./hints";
 import { legalTargets } from "./legal-moves";
 import { EvalClockView } from "./eval-clock-view";
+import type { Evaluation } from "./eval-clock";
 import { BoardExplorer } from "./board-explorer";
 import { DrillRuns, drillChoices, findChoice, pickChoice, type DrillChoice, type DrillCursor } from "./drill";
 import { resolvePieceSet, getPieceDataUri, STANDARD_PIECE_SET, type FanPieceKey } from "./fan-pieces";
@@ -34,6 +35,7 @@ export class PgnViewer {
 	private startingFen: string;
 	private startingComment: string | null = null;
 	private startingShapes: BoardShapes = { arrows: [], squares: [] };
+	private startingEvaluation: Evaluation | null = null;
 	private drawBadge: HTMLElement;
 	private evalClock: EvalClockView | null = null;
 	private title: string | null = null;
@@ -124,6 +126,7 @@ export class PgnViewer {
 		this.startingFen = parsed.startingFen;
 		this.startingComment = parsed.startingComment;
 		this.startingShapes = parsed.startingShapes;
+		this.startingEvaluation = parsed.startingEvaluation;
 		this.mainlineMoves = parsed.moves;
 		this.result = parsed.result;
 		this.initialMode = options.mode;
@@ -155,7 +158,7 @@ export class PgnViewer {
 		settings: ChessSettings,
 	): void {
 		this.pieceSetReady = this.notation === "fan";
-		this.evalClock = EvalClockView.create(boardWrapper, this.mainlineMoves, this.headers);
+		this.evalClock = EvalClockView.create(boardWrapper, this.mainlineMoves, this.headers, this.startingEvaluation);
 		this.boardManager = new BoardManager(boardWrapper, this.startingFen, settings, this.pieceSetName, options.board);
 		this.drawBadge = boardWrapper.createDiv({ cls: "sfb-chess-draw-badge" });
 		this.updateDrawBadge(this.startingFen, 1);
