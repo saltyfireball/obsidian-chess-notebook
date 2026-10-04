@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aliasBlock, aliasType, detectChessFormat, looksLikeFen, srcOption } from "../src/chess-format";
+import { aliasBlock, aliasType, blockType, detectChessFormat, looksLikeFen, srcOption, typeOption } from "../src/chess-format";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -64,6 +64,34 @@ describe("srcOption", () => {
 	});
 });
 
+describe("typeOption", () => {
+	it("reads type:fen and type:pgn in any case", () => {
+		expect(typeOption("type:fen board:blue")).toBe("fen");
+		expect(typeOption("title:x TYPE:PGN")).toBe("pgn");
+		expect(typeOption("board:blue")).toBeNull();
+	});
+
+	it("does not read a type: inside a quoted value", () => {
+		expect(typeOption('title:"type:fen trick"')).toBeNull();
+		expect(typeOption('title:"Study type:fen" type:pgn')).toBe("pgn");
+		expect(typeOption('src:"Games/type:fen.pgn"')).toBeNull();
+	});
+});
+
+describe("blockType", () => {
+	it("takes the header's type, then the fence's", () => {
+		expect(blockType("type:pgn", "type:fen board:blue")).toEqual({ type: "fen", inHeader: true });
+		expect(blockType("type:pgn", "1.e4 e5 *")).toEqual({ type: "pgn", inHeader: false });
+		expect(blockType("", "1.e4 e5 *")).toBeNull();
+	});
+
+	it("does not read a type: inside a quoted title on the fence or header", () => {
+		expect(blockType('type:pgn title:"Study type:fen"', "1.e4 e5 *")).toEqual({ type: "pgn", inHeader: false });
+		expect(blockType('title:"type:fen trick"', "1.e4 e5 *")).toBeNull();
+		expect(blockType("type:pgn", 'title:"type:fen trick"')).toEqual({ type: "pgn", inHeader: false });
+	});
+});
+
 describe("aliasBlock", () => {
 	it("leaves a block alone when its first line has a type:", () => {
 		const source = 'type:pgn src:"Games/opera.pgn"';
@@ -101,6 +129,15 @@ describe("aliasBlock", () => {
 	it("does not take a src: inside a quoted title as a header", () => {
 		const source = 'title:"see src:a.pgn"\n1.e4 e5 *';
 		expect(aliasBlock("chess", "type:pgn", source)).toEqual({ fenceLine: "type:pgn", source });
+	});
+
+	it("infers the type when the only type: is inside a quoted title", () => {
+		expect(aliasBlock("chess", 'title:"Study type:fen"', "1.e4 e5 *")).toEqual({
+			fenceLine: 'type:pgn title:"Study type:fen"',
+			source: "1.e4 e5 *",
+		});
+		const source = 'title:"type:fen trick"\n1.e4 e5 *';
+		expect(aliasBlock("chess", "", source)).toEqual({ fenceLine: "type:pgn", source });
 	});
 
 	it("puts the type on the fence line otherwise", () => {
