@@ -1,5 +1,5 @@
 import type { MoveNode } from "./pgn-parser";
-import { evalLabel, formatClock, hasEvalClock, latestEvalClock, linePath, whiteShare, type Evaluation } from "./eval-clock";
+import { evalLabel, formatClock, hasEvalClock, latestEvalClock, linePath, onMainline, whiteShare, type Evaluation } from "./eval-clock";
 
 // The eval bar beside the board and each side's clock above and below it,
 // from the [%eval] / [%clk] the PGN carries. Absent when it carries neither.
@@ -81,8 +81,9 @@ export class EvalClockView {
 		let found = latest.evaluation;
 		let stale = latest.stale;
 		// The start position's eval, from a comment before move 1. The main line
-		// carries it (dimmed) until a move has its own; variations do not.
-		if (!found && lineStart === 0 && this.startingEvaluation) {
+		// carries it (dimmed) until a move has its own; variations do not, not
+		// even one that replaces move 1.
+		if (!found && onMainline(this.currentId) && this.startingEvaluation) {
 			found = this.startingEvaluation;
 			stale = path.length > 0;
 		}

@@ -55,8 +55,8 @@ export function pickChoice(choices: DrillChoice[], random: () => number): DrillC
 	return choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))];
 }
 
-// Counts drill runs so a callback timed in one run does nothing once another
-// has started (Restart) or the drill is left.
+// Counts drill (or puzzle) runs so a callback timed in one run does nothing
+// once another has started (Restart, Reset) or the mode is left.
 export class DrillRuns {
 	private current = 0;
 

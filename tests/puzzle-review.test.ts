@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle } from "../src/puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle } from "../src/puzzle-review";
 
 const NOTE = [
 	"# Tactics",
@@ -66,6 +66,30 @@ describe("findChessBlocks fences", () => {
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].source).toBe("1.e4 e5 *");
 		expect(fence(["1. ```chessboard mode:puzzle", "   1.d4 *", "   ```"])[0].source).toBe("1.d4 *");
+	});
+
+	it("reads a fence indented four or more spaces as indented code, not a block", () => {
+		expect(fence(["    ```chessboard type:pgn mode:puzzle", "    1.e4 *", "    ```"])).toEqual([]);
+		expect(fence(["\t```chessboard mode:puzzle", "\t1.e4 *", "\t```"])).toEqual([]);
+		expect(fence(["- item", "      ```chessboard mode:puzzle", "      1.e4 *", "      ```"])).toEqual([]);
+		expect(fence(["> ```chessboard", ">     ```", "> 1.e4 *", "> ```"])[0].source).toBe("    ```\n1.e4 *");
+	});
+
+	it("counts a fence's indent from its list item's content", () => {
+		const blocks = fence(["- A tactic:", "  ```chessboard mode:puzzle", "  1.e4 e5 *", "  ```"]);
+		expect(blocks.map((b) => [b.source, b.line])).toEqual([["1.e4 e5 *", 1]]);
+		const deep = fence(["10. A tactic:", "    ```chessboard mode:puzzle", "    1.d4 *", "    ```"]);
+		expect(deep.map((b) => b.source)).toEqual(["1.d4 *"]);
+		expect(fence(["- a", "  - b", "    ```chessboard", "    1.c4 *", "    ```"]).map((b) => b.source)).toEqual(["1.c4 *"]);
+		const lazy = fence(["- A tactic", "with a lazy line", "  ```chessboard", "  1.Nf3 *", "  ```"]);
+		expect(lazy.map((b) => b.source)).toEqual(["1.Nf3 *"]);
+	});
+
+	it("ends an unclosed list item fence where the item ends and reads that line again", () => {
+		const blocks = fence(["- ```md", "  example", "", "```chessboard type:pgn mode:puzzle", "1.e4 *", "```"]);
+		expect(blocks.map((b) => [b.fenceLine, b.source, b.line])).toEqual([["type:pgn mode:puzzle", "1.e4 *", 3]]);
+		const inItem = fence(["- ```chessboard", "  1.e4 *", "", "  1... e5", "next paragraph"]);
+		expect(inItem.map((b) => b.source)).toEqual(["1.e4 *\n\n1... e5"]);
 	});
 
 	it("finds a fence in a callout, nested callouts too", () => {
@@ -172,5 +196,25 @@ describe("shuffle", () => {
 describe("reviewCount", () => {
 	it("counts from one", () => {
 		expect(reviewCount(2, 12)).toBe("Puzzle 3 of 12");
+	});
+});
+
+describe("fenceLineFor", () => {
+	const text = [
+		"```chessboard type:fen interactive:false board:brown title:\"A\"",
+		"8/8/8/8/8/8/8/K6k w - - 0 1",
+		"```",
+		"> ```pgn interactive:false start_at:end",
+		"> 1.e4 e5 *",
+		"> ```",
+	].join("\n");
+
+	it("finds a block's options by its source", () => {
+		expect(fenceLineFor(text, "chessboard", "8/8/8/8/8/8/8/K6k w - - 0 1\n")).toBe('type:fen interactive:false board:brown title:"A"');
+		expect(fenceLineFor(text, "pgn", "1.e4 e5 *")).toBe("interactive:false start_at:end");
+	});
+
+	it("is empty when no block of that language has the source", () => {
+		expect(fenceLineFor(text, "chessboard", "1.e4 e5 *")).toBe("");
 	});
 });
