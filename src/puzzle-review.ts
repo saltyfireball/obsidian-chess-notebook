@@ -142,6 +142,14 @@ export function findChessBlocks(text: string, languages: readonly string[] = ["c
 	return blocks;
 }
 
+// The options of the first language block in text whose source is source,
+// or "" when none matches. For a render that has no section info (PDF export):
+// two blocks with the same source and different options get the first's.
+export function fenceLineFor(text: string, language: string, source: string): string {
+	const wanted = source.trim();
+	return findChessBlocks(text, [language]).find((b) => b.source.trim() === wanted)?.fenceLine ?? "";
+}
+
 // Whether a puzzle's PGN has moves to play: a malformed one is not a puzzle.
 export function isPlayablePgn(pgn: string): boolean {
 	try {

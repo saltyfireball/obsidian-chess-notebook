@@ -1,6 +1,6 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
 import { boardBlockFor, editsCodeBlock } from "./paste-board";
-import { findChessBlocks, isPlayablePgn, mapInBatches } from "./puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches } from "./puzzle-review";
 import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
@@ -128,10 +128,16 @@ export default class ChessPlugin extends Plugin {
 			const child = new ChessBlockChild(el, (gone) => this.forgetBlock(gone));
 			this.blockChildren.set(el, child);
 			ctx.addChild(child);
+			const render = (fenceLine: string) => {
+				// An alias block is a chessboard block with its type: implied.
+				const block = alias ? aliasBlock(alias, fenceLine, source) : { fenceLine, source };
+				void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
+			};
 			const fenceLine = this.extractFenceLine(el, ctx, language);
-			// An alias block is a chessboard block with its type: implied.
-			const block = alias ? aliasBlock(alias, fenceLine, source) : { fenceLine, source };
-			void this.processCodeBlock(block.source, el, block.fenceLine, ctx.sourcePath);
+			if (fenceLine !== null) render(fenceLine);
+			// Export to PDF renders without section info: find the block's
+			// options in the note instead, or every option would be lost.
+			else void this.fenceLineFromNote(ctx.sourcePath, language, source).then(render);
 		};
 		try {
 			this.registerMarkdownCodeBlockProcessor(language, handler);
@@ -202,16 +208,28 @@ export default class ChessPlugin extends Plugin {
 		}
 	}
 
-	private extractFenceLine(el: HTMLElement, ctx: MarkdownPostProcessorContext, language: string): string {
+	// The block's options from its section, or null when the render has no
+	// section info.
+	private extractFenceLine(el: HTMLElement, ctx: MarkdownPostProcessorContext, language: string): string | null {
 		try {
 			const info = ctx.getSectionInfo(el);
 			if (!info || !info.text) {
-				return "";
+				return null;
 			}
 			const lines = info.text.split("\n");
 			const fenceLineText = lines[info.lineStart] ?? "";
 			const match = new RegExp("^`{3,}\\s*" + language + "\\s*(.*)", "i").exec(fenceLineText);
 			return match ? match[1].trim() : "";
+		} catch {
+			return "";
+		}
+	}
+
+	private async fenceLineFromNote(path: string, language: string, source: string): Promise<string> {
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile)) return "";
+		try {
+			return fenceLineFor(await this.app.vault.cachedRead(file), language, source);
 		} catch {
 			return "";
 		}

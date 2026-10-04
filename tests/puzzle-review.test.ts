@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle } from "../src/puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle } from "../src/puzzle-review";
 
 const NOTE = [
 	"# Tactics",
@@ -196,5 +196,25 @@ describe("shuffle", () => {
 describe("reviewCount", () => {
 	it("counts from one", () => {
 		expect(reviewCount(2, 12)).toBe("Puzzle 3 of 12");
+	});
+});
+
+describe("fenceLineFor", () => {
+	const text = [
+		"```chessboard type:fen interactive:false board:brown title:\"A\"",
+		"8/8/8/8/8/8/8/K6k w - - 0 1",
+		"```",
+		"> ```pgn interactive:false start_at:end",
+		"> 1.e4 e5 *",
+		"> ```",
+	].join("\n");
+
+	it("finds a block's options by its source", () => {
+		expect(fenceLineFor(text, "chessboard", "8/8/8/8/8/8/8/K6k w - - 0 1\n")).toBe('type:fen interactive:false board:brown title:"A"');
+		expect(fenceLineFor(text, "pgn", "1.e4 e5 *")).toBe("interactive:false start_at:end");
+	});
+
+	it("is empty when no block of that language has the source", () => {
+		expect(fenceLineFor(text, "chessboard", "1.e4 e5 *")).toBe("");
 	});
 });
