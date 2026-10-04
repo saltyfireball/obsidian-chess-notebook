@@ -1,6 +1,6 @@
 import { Editor, Notice, Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, TAbstractFile, TFile, normalizePath } from "obsidian";
 import { boardBlockFor, editsCodeBlock } from "./paste-board";
-import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, SourceOccurrences } from "./puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, occurrenceOf } from "./puzzle-review";
 import { PuzzleReviewModal, type ReviewPuzzle } from "./puzzle-review-modal";
 import { FenViewer } from "./fen-viewer";
 import { FenSequenceViewer } from "./fen-sequence-viewer";
@@ -63,14 +63,24 @@ class ChessBlockChild extends MarkdownRenderChild {
 	}
 }
 
+// The rendered note el is in: its nearest preview container, or the top of
+// its tree when it has none.
+function renderRoot(el: HTMLElement): HTMLElement {
+	const root = el.parentElement?.closest<HTMLElement>(".markdown-preview-view, .markdown-rendered");
+	if (root) return root;
+	let top = el;
+	while (top.parentElement) top = top.parentElement;
+	return top;
+}
+
 export default class ChessPlugin extends Plugin {
 	settings!: ChessSettings;
 	private fileCache = new Map<string, { mtime: number; content: string }>();
 	private fileBoundBlocks = new Map<string, FileBoundBlock[]>();
 	private blockChildren = new Map<HTMLElement, ChessBlockChild>();
-	// Which block a render without section info (PDF export) is, among the
-	// note's blocks with the same source.
-	private sectionlessRenders = new SourceOccurrences();
+	// The note, language and source of each block rendered without section
+	// info (PDF export), so it can find its place among the same blocks.
+	private sectionlessBlocks = new WeakMap<HTMLElement, string>();
 	// The code block languages rendered since load: chessboard plus the aliases turned on.
 	private blockLanguages: string[] = ["chessboard"];
 	private scanning = false;
@@ -143,14 +153,14 @@ export default class ChessPlugin extends Plugin {
 			}
 			// Export to PDF renders without section info: find the block's
 			// options in the note instead, or every option would be lost.
-			// Counted now, in render order, so blocks with the same source
-			// each get their own options.
-			const occurrence = this.sectionlessRenders.next(ctx.sourcePath, language, source, Date.now());
-			void this.fenceLineFromNote(ctx.sourcePath, language, source, occurrence).then((line) => {
+			// Blocks with the same source are told apart by their place in
+			// the rendered document, so each gets its own options.
+			this.sectionlessBlocks.set(el, ctx.sourcePath + "\n" + language + "\n" + source.trim());
+			void this.readNote(ctx.sourcePath).then((text) => {
 				// The block may have been unloaded or rendered again while the
 				// note was read.
 				if (child.gone || this.blockChildren.get(el) !== child) return;
-				render(line);
+				render(text === null ? "" : fenceLineFor(text, language, source, this.sectionlessOccurrence(el, language)));
 			});
 		};
 		try {
@@ -239,14 +249,26 @@ export default class ChessPlugin extends Plugin {
 		}
 	}
 
-	private async fenceLineFromNote(path: string, language: string, source: string, occurrence: number): Promise<string> {
+	private async readNote(path: string): Promise<string | null> {
 		const file = this.app.vault.getAbstractFileByPath(path);
-		if (!(file instanceof TFile)) return "";
+		if (!(file instanceof TFile)) return null;
 		try {
-			return fenceLineFor(await this.app.vault.cachedRead(file), language, source, occurrence);
+			return await this.app.vault.cachedRead(file);
 		} catch {
-			return "";
+			return null;
 		}
+	}
+
+	// Which of the blocks with el's note, language and source el is, in the
+	// order they appear in the rendered document around it (the export's
+	// page). Counted once the note is read, when the blocks before it are in
+	// place; a block replaced or removed is no longer in the document.
+	private sectionlessOccurrence(el: HTMLElement, language: string): number {
+		const root = renderRoot(el);
+		const blocks = Array.from(root.querySelectorAll<HTMLElement>(`.block-language-${language}`)).filter(
+			(block) => renderRoot(block) === root,
+		);
+		return occurrenceOf(blocks, el, (block) => this.sectionlessBlocks.get(block));
 	}
 
 	private async processCodeBlock(

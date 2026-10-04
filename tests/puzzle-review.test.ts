@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, reviewCount, shuffle, SourceOccurrences } from "../src/puzzle-review";
+import { fenceLineFor, findChessBlocks, isPlayablePgn, mapInBatches, occurrenceOf, reviewCount, shuffle } from "../src/puzzle-review";
 
 const NOTE = [
 	"# Tactics",
@@ -268,21 +268,39 @@ describe("fenceLineFor", () => {
 	});
 });
 
-describe("SourceOccurrences", () => {
-	it("counts each source of a note in render order", () => {
-		const occ = new SourceOccurrences();
-		expect(occ.next("A.md", "chessboard", "1.e4 *", 0)).toBe(0);
-		expect(occ.next("A.md", "chessboard", "1.d4 *", 10)).toBe(0);
-		expect(occ.next("A.md", "chessboard", "1.e4 *\n", 20)).toBe(1);
-		expect(occ.next("B.md", "chessboard", "1.e4 *", 30)).toBe(0);
-		expect(occ.next("A.md", "pgn", "1.e4 *", 40)).toBe(0);
+describe("occurrenceOf", () => {
+	type Block = { id: string; key?: string };
+	const keyOf = (b: Block) => b.key;
+	const start = { id: "start", key: "A.md\nchessboard\n1.e4 *" };
+	const other = { id: "other", key: "A.md\nchessboard\n1.d4 *" };
+	const plain = { id: "plain" };
+	const end = { id: "end", key: "A.md\nchessboard\n1.e4 *" };
+	const third = { id: "third", key: "A.md\nchessboard\n1.e4 *" };
+
+	it("counts the earlier items with the same key, in order", () => {
+		const doc: Block[] = [start, other, plain, end, third];
+		expect(occurrenceOf(doc, start, keyOf)).toBe(0);
+		expect(occurrenceOf(doc, other, keyOf)).toBe(0);
+		expect(occurrenceOf(doc, end, keyOf)).toBe(1);
+		expect(occurrenceOf(doc, third, keyOf)).toBe(2);
 	});
 
-	it("starts a note from zero after a quiet gap: a new export", () => {
-		const occ = new SourceOccurrences(2000);
-		occ.next("A.md", "chessboard", "1.e4 *", 0);
-		occ.next("A.md", "chessboard", "1.e4 *", 100);
-		expect(occ.next("A.md", "chessboard", "1.e4 *", 5000)).toBe(0);
-		expect(occ.next("A.md", "chessboard", "1.e4 *", 5100)).toBe(1);
+	// #127: the place in the document decides, not how often or in what
+	// order the blocks were rendered.
+	it("is the same however often or late an item was marked", () => {
+		const doc: Block[] = [start, end, third];
+		expect(occurrenceOf(doc, third, keyOf)).toBe(2);
+		expect(occurrenceOf(doc, end, keyOf)).toBe(1);
+		expect(occurrenceOf(doc, start, keyOf)).toBe(0);
+		expect(occurrenceOf(doc, end, keyOf)).toBe(1);
+	});
+
+	it("skips an item no longer in the document", () => {
+		expect(occurrenceOf([end, third], third, keyOf)).toBe(1);
+	});
+
+	it("is 0 for an item without a key or missing from the list", () => {
+		expect(occurrenceOf([start, plain], plain, keyOf)).toBe(0);
+		expect(occurrenceOf([start, end], third, keyOf)).toBe(0);
 	});
 });

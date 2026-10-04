@@ -188,31 +188,17 @@ export function fenceLineFor(text: string, language: string, source: string, occ
 	return matches[occurrence % matches.length].fenceLine;
 }
 
-// Counts, per note, how many times each block source has been rendered
-// without section info, so the nth render of a source gets the nth block that
-// has it. A note rendered again after gapMs of quiet starts from zero: a new
-// export pass.
-export class SourceOccurrences {
-	private notes = new Map<string, { last: number; counts: Map<string, number> }>();
-
-	constructor(private gapMs = 2000) {}
-
-	// The occurrence of this render: 0 for the first of the pass, then 1, ...
-	next(path: string, language: string, source: string, now: number): number {
-		for (const [p, note] of this.notes) {
-			if (now - note.last > this.gapMs) this.notes.delete(p);
-		}
-		let note = this.notes.get(path);
-		if (!note) {
-			note = { last: now, counts: new Map() };
-			this.notes.set(path, note);
-		}
-		note.last = now;
-		const key = language + "\n" + source.trim();
-		const occurrence = note.counts.get(key) ?? 0;
-		note.counts.set(key, occurrence + 1);
-		return occurrence;
-	}
+// Which of the items that share target's key target is: 0 for the first in
+// ordered, then 1, ... Items without a key never match. For a render that has
+// no section info (PDF export), ordered is the document's rendered blocks and
+// the key their language and source, so a block's occurrence is its place in
+// the document, however often or late it was rendered. A target missing from
+// ordered is 0.
+export function occurrenceOf<T>(ordered: readonly T[], target: T, keyOf: (item: T) => string | undefined): number {
+	const key = keyOf(target);
+	const index = ordered.indexOf(target);
+	if (key === undefined || index < 0) return 0;
+	return ordered.slice(0, index).filter((item) => keyOf(item) === key).length;
 }
 
 // Whether a puzzle's PGN has moves to play: a malformed one is not a puzzle.
